@@ -24,7 +24,7 @@ jobs:
       - name: Install dependencies
         run: npm install
         
-      - name: Debug environment variables
+      - name: .env
         run: |
           echo "Checking environment variables..."
           echo "TEST_SECRET is set: $([[ -n "$TEST_SECRET" ]] && echo "yes" || echo "no")"
