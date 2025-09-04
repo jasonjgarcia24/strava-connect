@@ -50,7 +50,12 @@ app.get('/sync', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`🌐 Strava sync server running at http://localhost:${port}`);
+app.listen(port, '0.0.0.0', () => {
+  console.log(`🌐 Strava sync server running on port ${port}`);
   console.log('📱 You can now trigger syncs from your phone browser!');
+  console.log('Environment check:', {
+    hasStravaClientId: !!process.env.STRAVA_CLIENT_ID,
+    hasGoogleSheetsId: !!process.env.GOOGLE_SHEETS_ID,
+    nodeEnv: process.env.NODE_ENV
+  });
 });
