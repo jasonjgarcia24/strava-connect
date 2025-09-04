@@ -31,18 +31,18 @@ jobs:
           echo "STRAVA_CLIENT_ID is set: $([[ -n "$STRAVA_CLIENT_ID" ]] && echo "yes" || echo "no")"
           echo "GOOGLE_SHEETS_ID is set: $([[ -n "$GOOGLE_SHEETS_ID" ]] && echo "yes" || echo "no")"
         env:
-          TEST_SECRET: ${{ .env.TEST_SECRET }}
-          STRAVA_CLIENT_ID: ${{ .env.STRAVA_CLIENT_ID }}
-          GOOGLE_SHEETS_ID: ${{ .env.GOOGLE_SHEETS_ID }}
+          TEST_SECRET: ${{ secrets.TEST_SECRET }}
+          STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+          GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
 
       - name: Sync Strava activities
         run: npm start ${{ github.event.inputs.activity_count || '30' }}
         env:
-          STRAVA_CLIENT_ID: ${{ .env.STRAVA_CLIENT_ID }}
-          STRAVA_CLIENT_SECRET: ${{ .env.STRAVA_CLIENT_SECRET }}
-          STRAVA_ACCESS_TOKEN: ${{ .env.STRAVA_ACCESS_TOKEN }}
-          STRAVA_REFRESH_TOKEN: ${{ .env.STRAVA_REFRESH_TOKEN }}
-          STRAVA_TOKEN_EXPIRES_AT: ${{ .env.STRAVA_TOKEN_EXPIRES_AT }}
-          GOOGLE_SHEETS_ID: ${{ .env.GOOGLE_SHEETS_ID }}
-          GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ .env.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
-          GOOGLE_PRIVATE_KEY: ${{ .env.GOOGLE_PRIVATE_KEY }}
+          STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+          STRAVA_CLIENT_SECRET: ${{ secrets.STRAVA_CLIENT_SECRET }}
+          STRAVA_ACCESS_TOKEN: ${{ secrets.STRAVA_ACCESS_TOKEN }}
+          STRAVA_REFRESH_TOKEN: ${{ secrets.STRAVA_REFRESH_TOKEN }}
+          STRAVA_TOKEN_EXPIRES_AT: ${{ secrets.STRAVA_TOKEN_EXPIRES_AT }}
+          GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+          GOOGLE_SERVICE_ACCOUNT_EMAIL: ${{ secrets.GOOGLE_SERVICE_ACCOUNT_EMAIL }}
+          GOOGLE_PRIVATE_KEY: ${{ secrets.GOOGLE_PRIVATE_KEY }}
