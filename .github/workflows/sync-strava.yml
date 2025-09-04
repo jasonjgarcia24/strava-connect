@@ -27,9 +27,11 @@ jobs:
       - name: Debug environment variables
         run: |
           echo "Checking environment variables..."
+          echo "TEST_SECRET is set: $([[ -n "$TEST_SECRET" ]] && echo "yes" || echo "no")"
           echo "STRAVA_CLIENT_ID is set: $([[ -n "$STRAVA_CLIENT_ID" ]] && echo "yes" || echo "no")"
           echo "GOOGLE_SHEETS_ID is set: $([[ -n "$GOOGLE_SHEETS_ID" ]] && echo "yes" || echo "no")"
         env:
+          TEST_SECRET: ${{ secrets.TEST_SECRET }}
           STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
           GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
 
