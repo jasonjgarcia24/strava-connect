@@ -24,6 +24,15 @@ jobs:
       - name: Install dependencies
         run: npm install
         
+      - name: Debug environment variables
+        run: |
+          echo "Checking environment variables..."
+          echo "STRAVA_CLIENT_ID is set: $([[ -n "$STRAVA_CLIENT_ID" ]] && echo "yes" || echo "no")"
+          echo "GOOGLE_SHEETS_ID is set: $([[ -n "$GOOGLE_SHEETS_ID" ]] && echo "yes" || echo "no")"
+        env:
+          STRAVA_CLIENT_ID: ${{ secrets.STRAVA_CLIENT_ID }}
+          GOOGLE_SHEETS_ID: ${{ secrets.GOOGLE_SHEETS_ID }}
+
       - name: Sync Strava activities
         run: npm start ${{ github.event.inputs.activity_count || '30' }}
         env:
