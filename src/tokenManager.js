@@ -21,10 +21,18 @@
     }
 
     async saveTokens(tokens) {
+      // In production, don't save tokens to files for security
+      if (process.env.NODE_ENV === 'production') {
+        console.log('Production mode: Not saving tokens to file for security');
+        return;
+      }
+      
+      // Only save to local file in development
       try {
         await fs.writeFile(this.tokenFile, JSON.stringify(tokens, null, 2));
+        console.log('Tokens saved to local file (development only)');
       } catch (error) {
-        throw new Error('Could not save tokens');
+        console.log('Could not save tokens to local file:', error.message);
       }
     }
   }
