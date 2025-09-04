@@ -9,6 +9,7 @@ class StravaService {
     this.tokenManager = new TokenManager();
     this.accessToken = null;
     this.refreshToken = null;
+    this.tokenExpiresAt = null;
   }
 
   async refreshAccessToken() {
@@ -34,6 +35,7 @@ class StravaService {
       await this.tokenManager.saveTokens(tokens);
       this.accessToken = tokens.access_token;
       this.refreshToken = tokens.refresh_token;
+      this.tokenExpiresAt = tokens.expires_at;
 
       return this.accessToken;
     } catch (error) {
@@ -46,10 +48,18 @@ class StravaService {
     const tokens = await this.tokenManager.loadTokens();
     this.refreshToken = tokens.refresh_token;
     this.accessToken = tokens.access_token;
+    this.tokenExpiresAt = tokens.expires_at;
+  }
+
+  isTokenExpired() {
+    if (!this.tokenExpiresAt) return true;
+    // Add 5 minute buffer to avoid edge cases
+    return Date.now() > (this.tokenExpiresAt - 300000);
   }
 
   async getActivities(page = 1, perPage = 30) {
-    if (!this.accessToken) {
+    if (!this.accessToken || this.isTokenExpired()) {
+      console.log('Token missing or expired, refreshing...');
       await this.refreshAccessToken();
     }
 
@@ -78,8 +88,8 @@ class StravaService {
 
       return activitiesWithDetails;
     } catch (error) {
-      if (error.response?.status === 401) {
-        console.log('Access token expired, refreshing...');
+      if (error.response?.status === 401 && !this.isTokenExpired()) {
+        console.log('Access token rejected by API, refreshing...');
         await this.refreshAccessToken();
         return this.getActivities(page, perPage);
       }
