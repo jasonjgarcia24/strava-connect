@@ -1,0 +1,56 @@
+require('dotenv').config();
+const express = require('express');
+const StravaConnectApp = require('./src/index');
+
+const app = express();
+const port = process.env.PORT || 3000;
+
+// Simple web interface
+app.get('/', (req, res) => {
+  res.send(`
+    <html>
+      <head><title>Strava Sync</title></head>
+      <body style="font-family: Arial; padding: 20px;">
+        <h1>🏃‍♂️ Strava Sync</h1>
+        <p>Click the button to sync your activities:</p>
+        <button onclick="sync()" style="padding: 10px 20px; font-size: 16px;">
+          Sync Activities
+        </button>
+        <div id="status" style="margin-top: 20px;"></div>
+        
+        <script>
+          async function sync() {
+            const status = document.getElementById('status');
+            status.innerHTML = '⏳ Syncing activities...';
+            
+            try {
+              const response = await fetch('/sync');
+              const result = await response.text();
+              status.innerHTML = '✅ ' + result;
+            } catch (error) {
+              status.innerHTML = '❌ Error: ' + error.message;
+            }
+          }
+        </script>
+      </body>
+    </html>
+  `);
+});
+
+// Sync endpoint
+app.get('/sync', async (req, res) => {
+  try {
+    console.log('Starting sync from web trigger...');
+    const stravaApp = new StravaConnectApp();
+    await stravaApp.syncActivities(30);
+    res.send('Sync completed successfully!');
+  } catch (error) {
+    console.error('Sync error:', error);
+    res.status(500).send('Sync failed: ' + error.message);
+  }
+});
+
+app.listen(port, () => {
+  console.log(`🌐 Strava sync server running at http://localhost:${port}`);
+  console.log('📱 You can now trigger syncs from your phone browser!');
+});

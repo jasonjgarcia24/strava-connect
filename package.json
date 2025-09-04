@@ -4,15 +4,22 @@
   "description": "Connects to Strava API and exports activities to Google Sheets",
   "main": "src/index.js",
   "scripts": {
-    "start": "node src/index.js",
-    "dev": "node src/index.js"
+    "start": "node server.js",
+    "dev": "node src/index.js",
+    "server": "node server.js"
   },
   "dependencies": {
     "axios": "^1.6.0",
-    "googleapis": "^126.0.1",
-    "dotenv": "^16.3.1"
+    "dotenv": "^16.3.1",
+    "express": "^5.1.0",
+    "googleapis": "^126.0.1"
   },
-  "keywords": ["strava", "google-sheets", "fitness", "api"],
+  "keywords": [
+    "strava",
+    "google-sheets",
+    "fitness",
+    "api"
+  ],
   "author": "",
   "license": "MIT"
 }
