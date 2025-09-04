@@ -11,7 +11,12 @@
         const data = await fs.readFile(this.tokenFile, 'utf8');
         return JSON.parse(data);
       } catch (error) {
-        throw new Error('Could not load tokens file');
+        // Fall back to environment variables if file doesn't exist (e.g., in Railway)
+        return {
+          access_token: process.env.STRAVA_ACCESS_TOKEN,
+          refresh_token: process.env.STRAVA_REFRESH_TOKEN,
+          expires_at: parseInt(process.env.STRAVA_TOKEN_EXPIRES_AT) || Date.now()
+        };
       }
     }
 
