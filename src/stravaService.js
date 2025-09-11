@@ -1,38 +1,87 @@
 const axios = require('axios');
 const TokenManager = require('./tokenManager');
+const SecureEncryption = require('../utils/encryptUtils.js');
 
 class StravaService {
-  constructor(clientId, clientSecret) {
-    this.clientId = clientId;
-    this.clientSecret = clientSecret;
-    this.baseURL = 'https://www.strava.com/api/v3';
-    this.tokenManager = new TokenManager();
-    this.accessToken = null;
-    this.refreshToken = null;
-    this.tokenExpiresAt = null;
+  baseURL = "https://www.strava.com/api/v3"
+  #tokenManager = null;
+  #encryption = null;
+  #source = 'strava';
+
+  constructor(
+    clientId = "",
+    clientSecret = "",
+    accessToken = "",
+    refreshToken = "",
+    tokenExpiresAt = ""
+  ) {
+    this.#tokenManager = new TokenManager(this.#source);
+    const tokens = this.#tokenManager.loadTokens();
+
+    this.clientId = clientId || tokens.client_id;
+    this.clientSecret = clientSecret || tokens.client_secret;
+    this.accessToken = accessToken || tokens.access_token;
+    this.refreshToken = refreshToken || tokens.refresh_token;
+    this.tokenExpiresAt = tokenExpiresAt || tokens.token_expires_at;
   }
 
-  async refreshAccessToken() {
+  safeCall(func, args = []) {
+    try {
+      this.#encryption = new SecureEncryption(this.#source);
+
+      switch (func) {
+        case '#isTokenExpired':
+          return this.#isTokenExpired();
+      }
+    }
+    finally {
+      this.#encryption.destroy();
+    }
+  }
+
+  async safeAsyncCall(func, args = []) {
+    try {
+      this.#encryption = new SecureEncryption(this.#source);
+
+      switch (func) {
+        case '#getActivities':
+          return await this.#getActivities(...args);
+      }
+    }
+    finally {
+      this.#encryption.destroy();
+    }
+  }
+
+  async getActivities(page = 1, perPage = 30) {
+    return await this.safeAsyncCall('#getActivities', [page, perPage]);
+  }
+
+  isTokenExpired() {
+    return this.safeCall('#isTokenExpired', []);
+  }
+
+  async #refreshAccessToken() {
     try {
       const response = await axios.post('https://www.strava.com/oauth/token', {
-        client_id: this.clientId,
-        client_secret: this.clientSecret,
-        refresh_token: this.refreshToken,
+        client_id: this.#encryption.decrypt(this.clientId),
+        client_secret: this.#encryption.decrypt(this.clientSecret),
+        refresh_token: this.#encryption.decrypt(this.refreshToken),
         grant_type: 'refresh_token'
       });
 
-      this.accessToken = response.data.access_token;
-      this.refreshToken = response.data.refresh_token;
+      this.accessToken = this.#encryption.encrypt(response.data.access_token);
+      this.refreshToken = this.#encryption.encrypt(response.data.refresh_token);
+      this.tokenExpiresAt = this.#encryption.encrypt(`${Date.now() + (response.data.expires_in * 1000)}`);
       console.log('Access token refreshed successfully');
 
-
       const tokens = {
-        access_token: response.data.access_token,
-        refresh_token: response.data.refresh_token,
-        expires_at: Date.now() + (response.data.expires_in * 1000)
+        access_token: this.accessToken,
+        refresh_token: this.refreshToken,
+        expires_at: this.tokenExpiresAt
       };
 
-      await this.tokenManager.saveTokens(tokens);
+      await this.#tokenManager.saveTokens(tokens, this.#source);
       this.accessToken = tokens.access_token;
       this.refreshToken = tokens.refresh_token;
       this.tokenExpiresAt = tokens.expires_at;
@@ -44,29 +93,30 @@ class StravaService {
     }
   }
 
-  async initialize() {
-    const tokens = await this.tokenManager.loadTokens();
-    this.refreshToken = tokens.refresh_token;
-    this.accessToken = tokens.access_token;
-    this.tokenExpiresAt = tokens.expires_at;
-  }
-
-  isTokenExpired() {
+  #isTokenExpired() {
     if (!this.tokenExpiresAt) return true;
-    // Add 5 minute buffer to avoid edge cases
-    return Date.now() > (this.tokenExpiresAt - 300000);
+
+    // Convert to JavaScript Date (multiply by 1000 for milliseconds)
+    const tokenExpiresAt = new Date(this.#encryption.decrypt(this.tokenExpiresAt) * 1000);
+    const now = new Date();
+
+    // Compare with 5-minute buffer
+    const fiveMinutesInMs = 5 * 60 * 1000; // 5 minutes in milliseconds
+    const timeDifference = tokenExpiresAt.getTime() - now.getTime();
+
+    return Math.abs(timeDifference) <= fiveMinutesInMs
   }
 
-  async getActivities(page = 1, perPage = 30) {
-    if (!this.accessToken || this.isTokenExpired()) {
+  async #getActivities(page, perPage) {
+    if (!this.#encryption.decrypt(this.accessToken) || this.#isTokenExpired()) {
       console.log('Token missing or expired, refreshing...');
-      await this.refreshAccessToken();
+      await this.#refreshAccessToken();
     }
 
     try {
       const response = await axios.get(`${this.baseURL}/athlete/activities`, {
         headers: {
-          'Authorization': `Bearer ${this.accessToken}`
+          'Authorization': `Bearer ${this.#encryption.decrypt(this.accessToken)}`
         },
         params: {
           page,
@@ -78,7 +128,7 @@ class StravaService {
       // Add small delay between API calls to respect rate limits
       const activitiesWithDetails = [];
       for (const activity of response.data) {
-        const detailedActivity = await this.getActivityDetails(activity.id);
+        const detailedActivity = await this.#getActivityDetails(activity.id);
         if (detailedActivity) {
           activitiesWithDetails.push(detailedActivity);
         }
@@ -88,9 +138,9 @@ class StravaService {
 
       return activitiesWithDetails;
     } catch (error) {
-      if (error.response?.status === 401 && !this.isTokenExpired()) {
+      if (error.response?.status === 401 && !this.#isTokenExpired()) {
         console.log('Access token rejected by API, refreshing...');
-        await this.refreshAccessToken();
+        await this.#refreshAccessToken();
         return this.getActivities(page, perPage);
       }
       console.error('Error fetching activities:', error.response?.data || error.message);
@@ -98,11 +148,11 @@ class StravaService {
     }
   }
 
-  async getActivityDetails(activityId) {
+  async #getActivityDetails(activityId) {
     try {
       const response = await axios.get(`${this.baseURL}/activities/${activityId}`, {
         headers: {
-          'Authorization': `Bearer ${this.accessToken}`
+          'Authorization': `Bearer ${this.#encryption.decrypt(this.accessToken)}`
         }
       });
 
@@ -110,8 +160,8 @@ class StravaService {
     } catch (error) {
       if (error.response?.status === 401) {
         console.log('Access token expired, refreshing...');
-        await this.refreshAccessToken();
-        return this.getActivityDetails(activityId);
+        await this.#refreshAccessToken();
+        return this.#getActivityDetails(activityId);
       }
       console.error(`Error fetching activity details for ${activityId}:`, error.response?.data || error.message);
       // Return null if we can't get details, the main activity list will still work

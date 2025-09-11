@@ -5,28 +5,15 @@ const SheetsService = require('./sheetsService');
 class StravaConnectApp {
   constructor() {
     this.validateEnvironmentVariables();
-    
-    this.stravaService = new StravaService(
-      process.env.STRAVA_CLIENT_ID,
-      process.env.STRAVA_CLIENT_SECRET,
-      process.env.STRAVA_REFRESH_TOKEN
-    );
 
-    this.sheetsService = new SheetsService(
-      process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL,
-      process.env.GOOGLE_PRIVATE_KEY,
-      process.env.GOOGLE_SHEETS_ID
-    );
+    this.stravaService = new StravaService();
+    this.sheetsService = new SheetsService();
   }
 
   validateEnvironmentVariables() {
     const requiredVars = [
-      'STRAVA_CLIENT_ID',
-      'STRAVA_CLIENT_SECRET', 
-      'STRAVA_REFRESH_TOKEN',
-      'GOOGLE_SHEETS_ID',
-      'GOOGLE_SERVICE_ACCOUNT_EMAIL',
-      'GOOGLE_PRIVATE_KEY'
+      'STRAVA_ENCRYPTION_KEY',
+      'SHEETS_ENCRYPTION_KEY'
     ];
 
     const missingVars = requiredVars.filter(varName => !process.env[varName]);
@@ -42,10 +29,7 @@ class StravaConnectApp {
   async syncActivities(activityCount = 30) {
     try {
       console.log('Starting Strava to Google Sheets sync...');
-      
-      // Initialize Strava service with tokens
-      await this.stravaService.initialize();
-      
+            
       // Initialize Google Sheets with headers
       await this.sheetsService.createHeaderRow();
       

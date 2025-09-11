@@ -1,35 +1,35 @@
-  const fs = require('fs').promises;
+  const fs = require('fs');
   const path = require('path');
 
   class TokenManager {
-    constructor() {
+    constructor(source) {
+      this.source = source;
       this.tokenFile = path.join(__dirname, '../config/tokens.json');
     }
 
-    async loadTokens() {
+    loadTokens() {
       try {
-        const data = await fs.readFile(this.tokenFile, 'utf8');
-        return JSON.parse(data);
+        const tokens = require(this.tokenFile);
+        return tokens[this.source];
       } catch (error) {
-        // Fall back to environment variables if file doesn't exist (e.g., in Railway)
-        return {
-          access_token: process.env.STRAVA_ACCESS_TOKEN,
-          refresh_token: process.env.STRAVA_REFRESH_TOKEN,
-          expires_at: parseInt(process.env.STRAVA_TOKEN_EXPIRES_AT) || Date.now()
-        };
+        console.log(`Error reading ${this.source} tokens from local file:`, error.message);
       }
     }
 
-    async saveTokens(tokens) {
-      // In production, don't save tokens to files for security
-      if (process.env.NODE_ENV === 'production') {
-        console.log('Production mode: Not saving tokens to file for security');
-        return;
-      }
+    async saveTokens(new_tokens, source) {
+      // // In production, don't save tokens to files for security
+      // if (process.env.NODE_ENV === 'production') {
+      //   console.log('Production mode: Not saving tokens to file for security');
+      //   return;
+      // }
       
       // Only save to local file in development
       try {
-        await fs.writeFile(this.tokenFile, JSON.stringify(tokens, null, 2));
+        const tokens = JSON.parse(fs.readFileSync(this.tokenFile, 'utf8'));
+        tokens[source] = {...tokens[source], ...new_tokens};
+
+        fs.writeFileSync(this.tokenFile, JSON.stringify(tokens, null, 2));
+        // await fs.writeFile(this.tokenFile, JSON.stringify(tokens, null, 2));
         console.log('Tokens saved to local file (development only)');
       } catch (error) {
         console.log('Could not save tokens to local file:', error.message);

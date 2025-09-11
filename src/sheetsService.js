@@ -1,20 +1,81 @@
+const TokenManager = require('./tokenManager');
+const SecureEncryption = require('../utils/encryptUtils.js');
 const { google } = require('googleapis');
 
 class SheetsService {
-  constructor(serviceAccountEmail, privateKey, spreadsheetId) {
-    this.spreadsheetId = spreadsheetId;
+  #encryption = null;
+  #auth = null;
+  #sheets = null;
+  #source = 'sheets';
+
+  constructor(
+    sheetsId = "",
+    privateKey = "",
+    serviceAccountEmail = ""
+  ) {
+    const tokenManager = new TokenManager(this.#source);
+    const tokens = tokenManager.loadTokens();
+
+    this.sheetsId = sheetsId || tokens.sheets_id;
+    this.serviceAccountEmail = serviceAccountEmail || tokens.service_account_email
+    this.privateKey = privateKey || tokens.private_key
     
-    this.auth = new google.auth.JWT(
-      serviceAccountEmail,
+    this.safeCall('#setAuth');    
+    this.#sheets = google.sheets({ version: 'v4', auth: this.#auth });
+  }
+
+  safeCall(func, args = []) {
+    try {
+      this.#encryption = new SecureEncryption(this.#source);
+
+      switch (func) {
+        case '#setAuth':
+          return this.#setAuth();
+      }
+    }
+    finally {
+      this.#encryption.destroy();
+    }
+  }
+
+  async safeAsyncCall(func, args = []) {
+    try {
+      this.#encryption = new SecureEncryption(this.#source);
+
+      switch (func) {
+        case '#createHeaderRow':
+          return await this.#createHeaderRow();
+        case '#getExistingActivities':
+          return await this.#getExistingActivities();
+        case '#appendActivities':
+          return await this.#appendActivities(...args);
+        case '#clearSheet':
+          return await this.#clearSheet();
+      }
+    }
+    finally {
+      this.#encryption.destroy();
+    }
+  }
+
+  #setAuth() {
+    this.#auth = new google.auth.JWT(
+      this.#encryption.decrypt(this.serviceAccountEmail),
       null,
-      privateKey.replace(/\\n/g, '\n'),
+      this.#encryption.decrypt(this.privateKey).replace(/\\n/g, '\n'),
       ['https://www.googleapis.com/auth/spreadsheets']
     );
-    
-    this.sheets = google.sheets({ version: 'v4', auth: this.auth });
   }
 
   async createHeaderRow() {
+    return await this.safeAsyncCall('#createHeaderRow');
+  }
+
+  async appendActivities(activities) {
+    return await this.safeAsyncCall('#appendActivities', [activities]);
+  }
+
+  async #createHeaderRow() {
     const headers = [
       'ID',
       'Name', 
@@ -51,14 +112,14 @@ class SheetsService {
 
     try {
       // Check if headers already exist
-      const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
+      const response = await this.#sheets.spreadsheets.values.get({
+        spreadsheetId: this.#encryption.decrypt(this.sheetsId),
         range: 'A1:AE1'
       });
 
       if (!response.data.values || response.data.values.length === 0) {
-        await this.sheets.spreadsheets.values.update({
-          spreadsheetId: this.spreadsheetId,
+        await this.#sheets.spreadsheets.values.update({
+          spreadsheetId: this.#encryption.decrypt(this.sheetsId),
           range: 'A1:AE1',
           valueInputOption: 'RAW',
           resource: {
@@ -73,10 +134,10 @@ class SheetsService {
     }
   }
 
-  async getExistingActivities() {
+  async #getExistingActivities() {
     try {
-      const response = await this.sheets.spreadsheets.values.get({
-        spreadsheetId: this.spreadsheetId,
+      const response = await this.#sheets.spreadsheets.values.get({
+        spreadsheetId: this.#encryption.decrypt(this.sheetsId),
         range: 'A:A'
       });
 
@@ -90,7 +151,7 @@ class SheetsService {
     }
   }
 
-  async appendActivities(activities) {
+  async #appendActivities(activities) {
     if (!activities || activities.length === 0) {
       console.log('No activities to append');
       return;
@@ -98,7 +159,7 @@ class SheetsService {
 
     try {
       // Get existing activity IDs to avoid duplicates
-      const existingIds = await this.getExistingActivities();
+      const existingIds = await this.#getExistingActivities();
       const newActivities = activities.filter(activity => 
         !existingIds.includes(activity.id.toString())
       );
@@ -142,8 +203,8 @@ class SheetsService {
         activity.externalId
       ]);
 
-      await this.sheets.spreadsheets.values.append({
-        spreadsheetId: this.spreadsheetId,
+      await this.#sheets.spreadsheets.values.append({
+        spreadsheetId: this.#encryption.decrypt(this.sheetsId),
         range: 'A:AE',
         valueInputOption: 'RAW',
         resource: {
@@ -158,10 +219,10 @@ class SheetsService {
     }
   }
 
-  async clearSheet() {
+  async #clearSheet() {
     try {
-      await this.sheets.spreadsheets.values.clear({
-        spreadsheetId: this.spreadsheetId,
+      await this.#sheets.spreadsheets.values.clear({
+        sheetsId: this.#encryption.decrypt(this.sheetsId),
         range: 'A:Z'
       });
       console.log('Sheet cleared');
