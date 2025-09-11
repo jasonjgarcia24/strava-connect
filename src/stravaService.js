@@ -177,7 +177,7 @@ class StravaService {
       name: activity.name,
       type: activity.type,
       sportType: activity.sport_type,
-      date: new Date(activity.start_date).toLocaleDateString(),
+      date: new Date(activity.start_date_local).toLocaleDateString(),
       distance: Math.round((activity.distance / 1609.34) * 100) / 100, // Convert to miles
       movingTime: Math.round(activity.moving_time / 60), // Convert to minutes
       totalTime: Math.round(activity.elapsed_time / 60), // Convert to minutes

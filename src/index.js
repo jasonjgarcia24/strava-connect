@@ -48,6 +48,7 @@ class StravaConnectApp {
       const formattedActivities = activities.map(activity => 
         this.stravaService.formatActivityForSheet(activity)
       );
+      console.log(activities);
 
       // Add activities to Google Sheets
       await this.sheetsService.appendActivities(formattedActivities);
