@@ -16,13 +16,7 @@
       }
     }
 
-    async saveTokens(new_tokens, source) {
-      // // In production, don't save tokens to files for security
-      // if (process.env.NODE_ENV === 'production') {
-      //   console.log('Production mode: Not saving tokens to file for security');
-      //   return;
-      // }
-      
+    async saveTokens(new_tokens, source) {     
       // Only save to local file in development
       try {
         const tokens = JSON.parse(fs.readFileSync(this.tokenFile, 'utf8'));
