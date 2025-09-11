@@ -37,15 +37,6 @@ app.get('/', (req, res) => {
   `);
 });
 
-// Test endpoint
-app.get('/test', (req, res) => {
-  res.send('Test endpoint working! Environment vars: ' + JSON.stringify({
-    STRAVA_ACCESS_TOKEN: process.env.STRAVA_ACCESS_TOKEN ? 'present' : 'missing',
-    STRAVA_REFRESH_TOKEN: process.env.STRAVA_REFRESH_TOKEN ? 'present' : 'missing',
-    GOOGLE_PRIVATE_KEY: process.env.GOOGLE_PRIVATE_KEY ? 'present' : 'missing'
-  }));
-});
-
 // Sync endpoint
 app.get('/sync', async (req, res) => {
   try {
