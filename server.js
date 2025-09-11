@@ -43,7 +43,7 @@ app.get('/sync', async (req, res) => {
     console.log('Starting sync from web trigger...');
     
     const stravaApp = new StravaConnectApp();
-    await stravaApp.syncActivities(50); // Start with fewer activities for testing
+    await stravaApp.syncActivities(100); // Start with fewer activities for testing
     res.send('Sync completed successfully!');
   } catch (error) {
     console.error('Sync error details:', {
