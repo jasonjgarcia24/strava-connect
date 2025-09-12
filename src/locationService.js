@@ -4,6 +4,40 @@ class LocationService {
   constructor() {
     this.nominatimBaseUrl = 'https://nominatim.openstreetmap.org';
     this.overpassBaseUrl = 'https://overpass-api.de/api/interpreter';
+    
+    // Define sport types that are typically indoor activities or don't need location lookup
+    this.indoorSportTypes = new Set([
+      'Badminton',
+      'Crossfit',
+      'Elliptical',
+      'HighIntensityIntervalTraining',
+      'IceSkate', // Indoor rinks
+      'Pickleball',
+      'Pilates',
+      'Racquetball',
+      'Squash',
+      'StairStepper',
+      'Swim', // Pool swimming
+      'TableTennis',
+      'Tennis', // Indoor courts
+      'VirtualRide',
+      'VirtualRow',
+      'VirtualRun',
+      'WeightTraining',
+      'Workout',
+      'Yoga'
+    ]);
+  }
+
+  /**
+   * Check if an activity is typically indoor and doesn't need location lookup
+   */
+  isIndoorActivity(activityData) {
+    const sportType = activityData.sport_type;
+    const isTrainer = activityData.trainer === true;
+    const hasNoCoordinates = !activityData.start_latlng || activityData.start_latlng.length === 0;
+    
+    return this.indoorSportTypes.has(sportType) || isTrainer || hasNoCoordinates;
   }
 
   /**
@@ -227,6 +261,19 @@ class LocationService {
    */
   async findActivityLocation(activityData) {
     try {
+      // Check if this is an indoor activity that doesn't need location lookup
+      if (this.isIndoorActivity(activityData)) {
+        console.log(`Skipping location lookup for indoor activity: ${activityData.name} (${activityData.sport_type})`);
+        return {
+          coordinates: null,
+          community: { 
+            state: 'Indoor Activity', 
+            city: 'Indoor Activity' 
+          },
+          location: null,
+          indoor: true
+        };
+      }
       // Extract coordinates from segment or activity
       const coordinates = this.getSegmentCoordinates(activityData);
       const { lat, lon } = coordinates;
