@@ -38,32 +38,32 @@ class StravaTokenRefresher {
   }
 
   updateEnvFile(accessToken, refreshToken, expiresAt) {
-    const envPath = path.join(process.cwd(), '.env');
-    let envContent = '';
+    // const envPath = path.join(process.cwd(), '.env');
+    // let envContent = '';
 
-    // Read existing .env file if it exists
-    if (fs.existsSync(envPath)) {
-      envContent = fs.readFileSync(envPath, 'utf8');
-    }
+    // // Read existing .env file if it exists
+    // if (fs.existsSync(envPath)) {
+    //   envContent = fs.readFileSync(envPath, 'utf8');
+    // }
 
-    // Update or add the tokens
-    const updates = {
-      'STRAVA_ACCESS_TOKEN': accessToken,
-      'STRAVA_REFRESH_TOKEN': refreshToken,
-      'STRAVA_TOKEN_EXPIRES_AT': expiresAt.toString()
-    };
+    // // Update or add the tokens
+    // const updates = {
+    //   'STRAVA_ACCESS_TOKEN': accessToken,
+    //   'STRAVA_REFRESH_TOKEN': refreshToken,
+    //   'STRAVA_TOKEN_EXPIRES_AT': expiresAt.toString()
+    // };
 
-    Object.entries(updates).forEach(([key, value]) => {
-      const regex = new RegExp(`^${key}=.*$`, 'm');
-      if (regex.test(envContent)) {
-        envContent = envContent.replace(regex, `${key}=${value}`);
-      } else {
-        envContent += `\n${key}=${value}`;
-      }
-    });
+    // Object.entries(updates).forEach(([key, value]) => {
+    //   const regex = new RegExp(`^${key}=.*$`, 'm');
+    //   if (regex.test(envContent)) {
+    //     envContent = envContent.replace(regex, `${key}=${value}`);
+    //   } else {
+    //     envContent += `\n${key}=${value}`;
+    //   }
+    // });
 
-    fs.writeFileSync(envPath, envContent.trim() + '\n');
-    console.log('✅ Updated .env file with new tokens');
+    // fs.writeFileSync(envPath, envContent.trim() + '\n');
+    // console.log('✅ Updated .env file with new tokens');
   }
 
   updateTokensFile(accessToken, refreshToken, expiresAt) {

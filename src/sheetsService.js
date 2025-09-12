@@ -91,6 +91,7 @@ class SheetsService {
       'Avg Heart Rate',
       'Max Heart Rate',
       'Calories',
+      'Perceived Exertion',
       'Description',
       'Private Notes',
       'Equipment Name',
@@ -107,20 +108,33 @@ class SheetsService {
       'Flagged',
       'Workout Type',
       'Upload ID',
-      'External ID'
+      'External ID',
+      // New location fields
+      'Detected State',
+      'Detected City',
+      'Detected County',
+      'Detected Country',
+      'Location Name',
+      'Location Full Name',
+      'Location Type',
+      'Nearest Location Distance (km)',
+      'Coordinate Source',
+      'Segment Name',
+      'Location Latitude',
+      'Location Longitude'
     ];
 
     try {
       // Check if headers already exist
       const response = await this.#sheets.spreadsheets.values.get({
         spreadsheetId: this.#encryption.decrypt(this.sheetsId),
-        range: 'A1:AE1'
+        range: 'A1:AR1'
       });
 
       if (!response.data.values || response.data.values.length === 0) {
         await this.#sheets.spreadsheets.values.update({
           spreadsheetId: this.#encryption.decrypt(this.sheetsId),
-          range: 'A1:AE1',
+          range: 'A1:AR1',
           valueInputOption: 'RAW',
           resource: {
             values: [headers]
@@ -184,6 +198,7 @@ class SheetsService {
         activity.averageHeartrate,
         activity.maxHeartrate,
         activity.calories,
+        activity.perceivedExertion,
         activity.description,
         activity.privateNotes,
         activity.equipmentName,
@@ -200,12 +215,25 @@ class SheetsService {
         activity.flagged,
         activity.workoutType,
         activity.uploadId,
-        activity.externalId
+        activity.externalId,
+        // New location fields
+        activity.detectedState,
+        activity.detectedCity,
+        activity.detectedCounty,
+        activity.detectedCountry,
+        activity.nearestLocationName,
+        activity.nearestLocationFullName,
+        activity.nearestLocationType,
+        activity.nearestLocationDistance,
+        activity.coordinateSource,
+        activity.segmentName,
+        activity.locationLat,
+        activity.locationLon
       ]);
 
       await this.#sheets.spreadsheets.values.append({
         spreadsheetId: this.#encryption.decrypt(this.sheetsId),
-        range: 'A:AE',
+        range: 'A:AR',
         valueInputOption: 'RAW',
         resource: {
           values: rows

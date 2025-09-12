@@ -1,6 +1,9 @@
 const axios = require('axios');
 const TokenManager = require('./tokenManager');
 const SecureEncryption = require('../utils/encryptUtils.js');
+const fs = require('fs');
+const path = require('path');
+
 
 class StravaService {
   baseURL = "https://www.strava.com/api/v3"
@@ -169,8 +172,16 @@ class StravaService {
     }
   }
 
-  formatActivityForSheet(activity) {
+  formatActivityForSheet(activity, locationData = null) {
     if (!activity) return null;
+
+    const save_path = path.join(process.cwd(), 'config', 'test_activity.json');
+    fs.writeFileSync(save_path, JSON.stringify(activity, null, 2));
+    
+    // Log location data if available
+    if (locationData && locationData.location) {
+      console.log(`Activity: ${activity.name} - Location: ${locationData.location.name}`);
+    }
 
     return {
       id: activity.id,
@@ -187,6 +198,7 @@ class StravaService {
       averageHeartrate: activity.average_heartrate,
       maxHeartrate: activity.max_heartrate,
       calories: activity.kilojoules,
+      perceivedExertion: activity.perceived_exertion,
       // New metadata fields
       description: activity.description || '',
       privateNotes: activity.private_note || '',
@@ -205,7 +217,20 @@ class StravaService {
       flagged: activity.flagged || false,
       workoutType: activity.workout_type,
       uploadId: activity.upload_id,
-      externalId: activity.external_id || ''
+      externalId: activity.external_id || '',
+      // Location data fields
+      detectedState: locationData?.community?.state || '',
+      detectedCity: locationData?.community?.city || '',
+      detectedCounty: locationData?.community?.county || '',
+      detectedCountry: locationData?.community?.country || '',
+      nearestLocationName: locationData?.location?.cleanName || '',
+      nearestLocationFullName: locationData?.location?.fullName || '',
+      nearestLocationType: locationData?.location?.type || '',
+      nearestLocationDistance: locationData?.location?.distanceKm || null,
+      coordinateSource: locationData?.coordinates?.source || '',
+      segmentName: locationData?.coordinates?.segmentName || '',
+      locationLat: locationData?.coordinates?.lat || null,
+      locationLon: locationData?.coordinates?.lon || null
     };
   }
 }

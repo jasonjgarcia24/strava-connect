@@ -1,6 +1,7 @@
 require('dotenv').config();
 const StravaService = require('./stravaService');
 const SheetsService = require('./sheetsService');
+const LocationService = require('./locationService');
 
 class StravaConnectApp {
   constructor() {
@@ -8,6 +9,7 @@ class StravaConnectApp {
 
     this.stravaService = new StravaService();
     this.sheetsService = new SheetsService();
+    this.locationService = new LocationService();
   }
 
   validateEnvironmentVariables() {
@@ -44,14 +46,29 @@ class StravaConnectApp {
 
       console.log(`Found ${activities.length} activities`);
 
-      // Format activities for Google Sheets
-      const formattedActivities = activities.map(activity => 
-        this.stravaService.formatActivityForSheet(activity)
-      );
-      console.log(activities);
+      // Process activities with location data
+      console.log('Enriching activities with location data...');
+      const enrichedActivities = [];
+      
+      for (let i = 0; i < activities.length; i++) {
+        const activity = activities[i];
+        console.log(`Processing activity ${i + 1}/${activities.length}: ${activity.name}`);
+        
+        // Find location for this activity
+        const locationData = await this.locationService.findActivityLocation(activity);
+        
+        // Format activity with location data for Google Sheets
+        const formattedActivity = this.stravaService.formatActivityForSheet(activity, locationData);
+        enrichedActivities.push(formattedActivity);
+        
+        // Add delay to respect API rate limits
+        if (i < activities.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
+        }
+      }
 
       // Add activities to Google Sheets
-      await this.sheetsService.appendActivities(formattedActivities);
+      await this.sheetsService.appendActivities(enrichedActivities);
       
       console.log('Sync completed successfully!');
       
