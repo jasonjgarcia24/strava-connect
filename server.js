@@ -709,23 +709,82 @@ app.get('/', (req, res) => {
             // Chart creation functions
             function createTrendsChart(data) {
                 const ctx = document.getElementById('trendsChart').getContext('2d');
-                new Chart(ctx, {
+                
+                // Destroy existing chart if it exists
+                const existingChart = Chart.getChart('trendsChart');
+                if (existingChart) {
+                    existingChart.destroy();
+                }
+                
+                window.trendsChart = new Chart(ctx, {
                     type: 'line',
                     data: {
                         labels: data.labels,
-                        datasets: [{
-                            label: 'Distance (mi)',
-                            data: data.distances,
-                            borderColor: '#667eea',
-                            backgroundColor: 'rgba(102, 126, 234, 0.1)',
-                            tension: 0.4
-                        }]
+                        datasets: [
+                            {
+                                label: 'Distance (mi)',
+                                data: data.distances,
+                                borderColor: '#667eea',
+                                backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                                tension: 0.4,
+                                yAxisID: 'y'
+                            },
+                            {
+                                label: 'Time (min)',
+                                data: data.times,
+                                borderColor: '#fa709a',
+                                backgroundColor: 'rgba(250, 112, 154, 0.1)',
+                                tension: 0.4,
+                                yAxisID: 'y1'
+                            }
+                        ]
                     },
                     options: {
                         responsive: true,
                         maintainAspectRatio: false,
+                        interaction: {
+                            mode: 'index',
+                            intersect: false,
+                        },
+                        scales: {
+                            x: {
+                                display: true,
+                                title: {
+                                    display: true,
+                                    text: 'Date'
+                                }
+                            },
+                            y: {
+                                type: 'linear',
+                                display: true,
+                                position: 'left',
+                                title: {
+                                    display: true,
+                                    text: 'Distance (miles)'
+                                }
+                            },
+                            y1: {
+                                type: 'linear',
+                                display: true,
+                                position: 'right',
+                                title: {
+                                    display: true,
+                                    text: 'Time (minutes)'
+                                },
+                                grid: {
+                                    drawOnChartArea: false,
+                                }
+                            }
+                        },
                         plugins: {
-                            legend: { display: true }
+                            title: {
+                                display: true,
+                                text: 'Activity Trends - Distance & Time (Last 30 Days)'
+                            },
+                            legend: { 
+                                display: true,
+                                position: 'top'
+                            }
                         }
                     }
                 });
@@ -879,7 +938,8 @@ app.get('/api/overview', async (req, res) => {
 
     const trendsData = {
       labels: last30Days.map(activity => new Date(activity.Date).toLocaleDateString()),
-      distances: last30Days.map(activity => parseFloat(activity['Distance (mi)']) || 0)
+      distances: last30Days.map(activity => parseFloat(activity['Distance (mi)']) || 0),
+      times: last30Days.map(activity => parseFloat(activity['Moving Time (min)']) || 0)
     };
 
     res.json({
@@ -1260,14 +1320,37 @@ app.get('/api/summaries', async (req, res) => {
     const stravaApp = new StravaConnectApp();
     const summaries = await stravaApp.sheetsService.getExistingWeeklySummaries();
     
-    // Sort by year and week number, most recent first
-    const sortedSummaries = summaries.sort((a, b) => {
+    // Group by week and year, keeping only the most recent summary for each week
+    const latestSummariesMap = new Map();
+    
+    summaries.forEach(summary => {
+      const weekKey = `${summary['Week Number']}-${summary['Year']}`;
+      const generatedDate = new Date(summary['Generated Date']);
+      
+      if (!latestSummariesMap.has(weekKey)) {
+        latestSummariesMap.set(weekKey, summary);
+      } else {
+        const existing = latestSummariesMap.get(weekKey);
+        const existingDate = new Date(existing['Generated Date']);
+        
+        // Keep the one with the most recent Generated Date
+        if (generatedDate > existingDate) {
+          latestSummariesMap.set(weekKey, summary);
+        }
+      }
+    });
+    
+    // Convert back to array and sort by year and week number, most recent first
+    const latestSummaries = Array.from(latestSummariesMap.values());
+    const sortedSummaries = latestSummaries.sort((a, b) => {
       const yearDiff = parseInt(b.Year) - parseInt(a.Year);
       if (yearDiff !== 0) return yearDiff;
       return parseInt(b['Week Number']) - parseInt(a['Week Number']);
     });
     
-    res.json(sortedSummaries.slice(0, 20)); // Return last 20 summaries
+    console.log(`Summaries API: Found ${summaries.length} total summaries, returning ${sortedSummaries.length} latest unique summaries`);
+    
+    res.json(sortedSummaries.slice(0, 20)); // Return last 20 unique summaries
   } catch (error) {
     console.error('Summaries API error:', error);
     res.status(500).json({ error: 'Failed to load summaries' });
