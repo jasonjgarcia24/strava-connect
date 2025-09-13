@@ -363,6 +363,57 @@ Please provide a well-organized summary in 3-4 paragraphs that would be useful f
   }
 
   /**
+   * Check if previous week has a summary and create one if missing
+   */
+  async checkAndCreatePreviousWeekSummary(activities) {
+    try {
+      // Get previous week date
+      const lastWeek = new Date();
+      lastWeek.setDate(lastWeek.getDate() - 7);
+      
+      const { startOfWeek } = this.getWeekDateRange(lastWeek);
+      const weekNumber = this.getWeekNumber(startOfWeek);
+      const year = startOfWeek.getFullYear();
+      
+      // Check if summary already exists for previous week
+      const SheetsService = require('./sheetsService');
+      const sheetsService = new SheetsService();
+      const existingSummaries = await sheetsService.getExistingWeeklySummaries();
+      
+      const weekKey = `${weekNumber}-${year}`;
+      const summaryExists = existingSummaries.some(summary => {
+        const existingWeekKey = `${summary['Week Number']}-${summary['Year']}`;
+        return existingWeekKey === weekKey;
+      });
+      
+      if (summaryExists) {
+        console.log(`📊 Previous week summary already exists for Week ${weekNumber} ${year}`);
+        return null;
+      }
+      
+      // Generate summary for previous week
+      console.log(`📝 Creating missing summary for previous week: Week ${weekNumber} ${year}...`);
+      const summary = await this.generateWeeklySummary(activities, lastWeek);
+      
+      if (summary.activitiesWithNotes > 0) {
+        // Save to spreadsheet
+        await sheetsService.createWeeklySummaryHeaders();
+        await sheetsService.appendWeeklySummary(summary);
+        
+        console.log(`✅ Created missing summary for Week ${weekNumber} ${year} (${summary.activitiesWithNotes} activities with notes)`);
+        return summary;
+      } else {
+        console.log(`⏭️  No activities with notes found for Week ${weekNumber} ${year} - skipping summary creation`);
+        return null;
+      }
+      
+    } catch (error) {
+      console.error('❌ Failed to check/create previous week summary:', error.message);
+      return null;
+    }
+  }
+
+  /**
    * Generate current week summary automatically (always creates new summary)
    */
   async generateCurrentWeekSummaryIfNeeded(activities) {

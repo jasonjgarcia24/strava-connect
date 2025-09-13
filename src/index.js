@@ -62,7 +62,7 @@ class StravaConnectApp {
       if (newActivities.length === 0) {
         console.log('✅ All activities are already in the sheet - no new activities to process');
         // Still run weekly summary check
-        console.log('\n📅 Checking if weekly summary should be auto-generated...');
+        console.log('\n📅 Checking for missing weekly summaries...');
         try {
           const allActivities = await this.sheetsService.getAllActivities();
           if (allActivities.length > 0) {
@@ -70,6 +70,11 @@ class StravaConnectApp {
               ...activity,
               start_date_local: new Date(activity.Date).toISOString()
             }));
+            
+            // Check and create previous week summary if missing
+            await this.weeklySummaryService.checkAndCreatePreviousWeekSummary(activitiesWithDates);
+            
+            // Generate current week summary if it's Wednesday or later
             await this.weeklySummaryService.generateCurrentWeekSummaryIfNeeded(activitiesWithDates);
           }
         } catch (error) {
@@ -106,8 +111,8 @@ class StravaConnectApp {
       
       console.log('Sync completed successfully!');
 
-      // Auto-generate weekly summary if it's Wednesday or later
-      console.log('\n📅 Checking if weekly summary should be auto-generated...');
+      // Auto-generate weekly summaries
+      console.log('\n📅 Checking for missing weekly summaries...');
       try {
         // Get all activities for weekly summary analysis
         const allActivities = await this.sheetsService.getAllActivities();
@@ -119,6 +124,10 @@ class StravaConnectApp {
             start_date_local: new Date(activity.Date).toISOString()
           }));
           
+          // Check and create previous week summary if missing
+          await this.weeklySummaryService.checkAndCreatePreviousWeekSummary(activitiesWithDates);
+          
+          // Generate current week summary if it's Wednesday or later
           await this.weeklySummaryService.generateCurrentWeekSummaryIfNeeded(activitiesWithDates);
         } else {
           console.log('📊 No activities found for weekly summary analysis');
