@@ -224,6 +224,31 @@ app.get('/', (req, res) => {
                 white-space: normal;
                 overflow: visible;
             }
+            .week-ai-summary {
+                background: #f0f8ff;
+                padding: 15px 20px;
+                margin: 10px 0;
+                border-left: 4px solid #667eea;
+                border-radius: 0 4px 4px 0;
+            }
+            .week-ai-summary h4 {
+                margin: 0 0 8px 0;
+                color: #667eea;
+                font-size: 14px;
+            }
+            .week-ai-summary p {
+                margin: 0;
+                line-height: 1.5;
+                color: #555;
+                font-size: 13px;
+            }
+            .out-of-month {
+                background: #f9f9f9;
+                color: #999;
+            }
+            .out-of-month td {
+                border-color: #f0f0f0;
+            }
         </style>
     </head>
     <body>
@@ -300,7 +325,16 @@ app.get('/', (req, res) => {
             <!-- Weekly Tab -->
             <div id="weekly" class="tab-content">
                 <div class="card">
-                    <h3>📅 Weekly Analysis</h3>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>📅 Weekly Analysis</h3>
+                        <div style="display: flex; align-items: center; gap: 15px;">
+                            <label for="activityTypeFilter" style="font-weight: 500;">Activity Types:</label>
+                            <select id="activityTypeFilter" multiple style="padding: 8px; border: 2px solid #ddd; border-radius: 4px; background: white; min-width: 200px;">
+                                <!-- Options populated by JavaScript -->
+                            </select>
+                            <button onclick="updateWeeklyChart()" class="btn" style="padding: 6px 12px; font-size: 12px;">Update Chart</button>
+                        </div>
+                    </div>
                     <div class="chart-container">
                         <canvas id="weeklyChart"></canvas>
                     </div>
@@ -476,30 +510,59 @@ app.get('/', (req, res) => {
                     const response = await fetch('/api/weekly');
                     const data = await response.json();
                     
+                    // Populate activity type selector
+                    const activityTypeFilter = document.getElementById('activityTypeFilter');
+                    activityTypeFilter.innerHTML = data.allActivityTypes.map(type => 
+                        '<option value="' + type + '" selected>' + type + '</option>'
+                    ).join('');
+                    
+                    // Store data globally for chart updates
+                    window.weeklyData = data;
+                    
                     createWeeklyChart(data);
                     
-                    document.getElementById('weeklyStats').innerHTML = \`
-                        <div class="stats-grid">
-                            <div class="stat-card">
-                                <div class="stat-value">\${data.thisWeek.activities}</div>
-                                <div class="stat-label">This Week Activities</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value">\${data.thisWeek.distance}</div>
-                                <div class="stat-label">This Week Distance</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value">\${data.lastWeek.activities}</div>
-                                <div class="stat-label">Last Week Activities</div>
-                            </div>
-                            <div class="stat-card">
-                                <div class="stat-value">\${data.lastWeek.distance}</div>
-                                <div class="stat-label">Last Week Distance</div>
-                            </div>
-                        </div>
-                    \`;
+                    document.getElementById('weeklyStats').innerHTML = 
+                        '<div class="stats-grid">' +
+                            '<div class="stat-card">' +
+                                '<div class="stat-value">' + data.thisWeek.activities + '</div>' +
+                                '<div class="stat-label">This Week Activities</div>' +
+                            '</div>' +
+                            '<div class="stat-card">' +
+                                '<div class="stat-value">' + data.thisWeek.distance + '</div>' +
+                                '<div class="stat-label">This Week Distance</div>' +
+                            '</div>' +
+                            '<div class="stat-card">' +
+                                '<div class="stat-value">' + data.lastWeek.activities + '</div>' +
+                                '<div class="stat-label">Last Week Activities</div>' +
+                            '</div>' +
+                            '<div class="stat-card">' +
+                                '<div class="stat-value">' + data.lastWeek.distance + '</div>' +
+                                '<div class="stat-label">Last Week Distance</div>' +
+                            '</div>' +
+                        '</div>';
                 } catch (error) {
                     document.getElementById('weeklyStats').innerHTML = '<div class="error">Failed to load weekly data</div>';
+                }
+            }
+
+            // Update weekly chart with selected activity types
+            async function updateWeeklyChart() {
+                const activityTypeFilter = document.getElementById('activityTypeFilter');
+                const selectedTypes = Array.from(activityTypeFilter.selectedOptions).map(option => option.value);
+                
+                if (selectedTypes.length === 0) {
+                    alert('Please select at least one activity type');
+                    return;
+                }
+                
+                try {
+                    const response = await fetch('/api/weekly?types=' + selectedTypes.join(','));
+                    const data = await response.json();
+                    
+                    createWeeklyChart(data);
+                    window.weeklyData = data;
+                } catch (error) {
+                    console.error('Failed to update weekly chart:', error);
                 }
             }
 
@@ -574,6 +637,11 @@ app.get('/', (req, res) => {
                             '<span><strong>Activities:</strong> ' + week.summary.totalActivities + '</span>' +
                             '<span><strong>Elevation:</strong> ' + week.summary.totalElevation + ' ft</span>' +
                         '</div>' +
+                        (week.aiSummary ? 
+                            '<div class="week-ai-summary">' +
+                                '<h4>📝 Weekly Summary</h4>' +
+                                '<p>' + week.aiSummary + '</p>' +
+                            '</div>' : '') +
                         '<table class="daily-table">' +
                             '<thead>' +
                                 '<tr>' +
@@ -590,11 +658,12 @@ app.get('/', (req, res) => {
                             '</thead>' +
                             '<tbody>' +
                                 week.days.map(day => {
+                                    const rowClass = day.isInTargetMonth ? '' : ' class="out-of-month"';
                                     if (day.activities.length === 0) {
-                                        return '<tr><td>' + day.date + '</td><td class="no-activity-day" colspan="8">Rest Day</td></tr>';
+                                        return '<tr' + rowClass + '><td>' + day.date + '</td><td class="no-activity-day" colspan="8">Rest Day</td></tr>';
                                     }
                                     return day.activities.map(activity => 
-                                        '<tr>' +
+                                        '<tr' + rowClass + '>' +
                                             '<td>' + day.date + '</td>' +
                                             '<td>' + activity.name + '</td>' +
                                             '<td>' + activity.distance + '</td>' +
@@ -664,19 +733,57 @@ app.get('/', (req, res) => {
 
             function createWeeklyChart(data) {
                 const ctx = document.getElementById('weeklyChart').getContext('2d');
-                new Chart(ctx, {
+                
+                // Destroy existing chart if it exists
+                const existingChart = Chart.getChart('weeklyChart');
+                if (existingChart) {
+                    existingChart.destroy();
+                }
+                
+                // Create datasets for each activity type with different colors
+                const colors = [
+                    '#667eea', '#f093fb', '#4facfe', '#43e97b', 
+                    '#fa709a', '#fee140', '#a8edea', '#ffecd2',
+                    '#ff9a9e', '#a8caba', '#fbc2eb', '#84fab0'
+                ];
+                
+                const datasets = data.selectedTypes.map((type, index) => ({
+                    label: type,
+                    data: data.activityTypeData[type],
+                    backgroundColor: colors[index % colors.length],
+                    borderColor: colors[index % colors.length],
+                    borderWidth: 1
+                }));
+                
+                window.weeklyChart = new Chart(ctx, {
                     type: 'bar',
                     data: {
                         labels: data.weeks,
-                        datasets: [{
-                            label: 'Weekly Distance (mi)',
-                            data: data.distances,
-                            backgroundColor: '#667eea'
-                        }]
+                        datasets: datasets
                     },
                     options: {
                         responsive: true,
-                        maintainAspectRatio: false
+                        maintainAspectRatio: false,
+                        scales: {
+                            x: { stacked: true },
+                            y: { 
+                                stacked: true,
+                                title: {
+                                    display: true,
+                                    text: 'Distance (miles)'
+                                }
+                            }
+                        },
+                        plugins: {
+                            title: {
+                                display: true,
+                                text: 'Weekly Distance by Activity Type'
+                            },
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        }
                     }
                 });
             }
@@ -807,6 +914,7 @@ app.get('/api/weekly', async (req, res) => {
   try {
     const stravaApp = new StravaConnectApp();
     const activities = await stravaApp.sheetsService.getAllActivities();
+    const { types } = req.query; // Optional activity type filter
     
     console.log(`Weekly API: Found ${activities.length} activities`);
     if (activities.length > 0) {
@@ -855,9 +963,21 @@ app.get('/api/weekly', async (req, res) => {
     
     console.log(`This week: ${thisWeekActivities.length}, Last week: ${lastWeekActivities.length}`);
     
-    // Prepare weekly chart data (last 8 weeks)
+    // Get available activity types and apply filter
+    const allActivityTypes = [...new Set(activities.map(a => a.Type || a['Type'] || 'Unknown').filter(Boolean))];
+    const selectedTypes = types ? types.split(',') : allActivityTypes;
+    
+    console.log('Available activity types:', allActivityTypes);
+    console.log('Selected types:', selectedTypes);
+    
+    // Prepare weekly chart data (last 8 weeks) with activity type breakdown
     const weeks = [];
-    const distances = [];
+    const activityTypeData = {};
+    
+    // Initialize data structure for each activity type
+    selectedTypes.forEach(type => {
+      activityTypeData[type] = [];
+    });
     
     for (let i = 7; i >= 0; i--) {
       const weekStart = new Date(now);
@@ -873,18 +993,29 @@ app.get('/api/weekly', async (req, res) => {
       const weekActivities = activities.filter(activity => {
         if (!activity.Date) return false;
         const date = new Date(activity.Date);
+        const activityType = activity.Type || activity['Type'] || 'Unknown';
         const isValid = !isNaN(date.getTime());
         const inRange = date >= weekStart && date <= weekEnd;
-        return isValid && inRange;
+        const typeMatch = selectedTypes.includes(activityType);
+        return isValid && inRange && typeMatch;
       });
       
-      const weekDistance = weekActivities.reduce((sum, activity) => {
-        const distance = parseFloat(activity['Distance (mi)']);
-        return sum + (isNaN(distance) ? 0 : distance);
-      }, 0);
-      
       weeks.push(`${weekStart.getMonth() + 1}/${weekStart.getDate()}`);
-      distances.push(parseFloat(weekDistance.toFixed(1)));
+      
+      // Calculate distance by activity type for this week
+      selectedTypes.forEach(type => {
+        const typeActivities = weekActivities.filter(activity => {
+          const activityType = activity.Type || activity['Type'] || 'Unknown';
+          return activityType === type;
+        });
+        
+        const typeDistance = typeActivities.reduce((sum, activity) => {
+          const distance = parseFloat(activity['Distance (mi)']);
+          return sum + (isNaN(distance) ? 0 : distance);
+        }, 0);
+        
+        activityTypeData[type].push(parseFloat(typeDistance.toFixed(1)));
+      });
     }
     
     // Calculate distances with better error handling
@@ -908,7 +1039,9 @@ app.get('/api/weekly', async (req, res) => {
         distance: lastWeekDistance.toFixed(1)
       },
       weeks,
-      distances
+      activityTypeData,
+      allActivityTypes,
+      selectedTypes
     };
     
     console.log('Weekly API result:', result);
@@ -980,16 +1113,24 @@ app.get('/api/daily', async (req, res) => {
     
     console.log(`Daily API: Found ${monthActivities.length} activities for ${month}`);
     
-    // Group activities by weeks (Monday start)
+    // Get AI summaries for reference
+    const summaries = await stravaApp.sheetsService.getExistingWeeklySummaries();
+    console.log(`Found ${summaries.length} AI summaries`);
+    
+    // Group activities by weeks (Monday start) - show full weeks even if they extend beyond month
     const weeks = [];
     let currentWeekStart = new Date(monthStart);
     
-    // Adjust to start on Monday
+    // Adjust to start on Monday of the first week that contains any day of the month
     const dayOfWeek = currentWeekStart.getDay();
     const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
     currentWeekStart.setDate(currentWeekStart.getDate() - daysFromMonday);
     
-    while (currentWeekStart <= monthEnd) {
+    // Continue until we've covered all weeks that intersect with the month
+    const monthEndExtended = new Date(monthEnd);
+    monthEndExtended.setDate(monthEnd.getDate() + 6); // Add a week buffer
+    
+    while (currentWeekStart <= monthEndExtended) {
       const weekEnd = new Date(currentWeekStart);
       weekEnd.setDate(currentWeekStart.getDate() + 6);
       weekEnd.setHours(23, 59, 59, 999);
@@ -1000,16 +1141,16 @@ app.get('/api/daily', async (req, res) => {
         return date >= currentWeekStart && date <= weekEnd;
       });
       
-      // Create days array for the week
+      // Create days array for the week (always show full 7 days)
       const days = [];
+      const hasMonthDays = [];
       for (let d = 0; d < 7; d++) {
         const dayDate = new Date(currentWeekStart);
         dayDate.setDate(currentWeekStart.getDate() + d);
         
-        // Skip days outside the month
-        if (dayDate < monthStart || dayDate > monthEnd) {
-          continue;
-        }
+        // Mark if this day is in the target month
+        const isInTargetMonth = dayDate >= monthStart && dayDate <= monthEnd;
+        hasMonthDays.push(isInTargetMonth);
         
         const dayActivities = weekActivities.filter(activity => {
           const actDate = new Date(activity.Date);
@@ -1028,7 +1169,8 @@ app.get('/api/daily', async (req, res) => {
         
         days.push({
           date: dayDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
-          activities: dayActivities
+          activities: dayActivities,
+          isInTargetMonth: isInTargetMonth
         });
       }
       
@@ -1040,13 +1182,22 @@ app.get('/api/daily', async (req, res) => {
         totalElevation: weekActivities.reduce((sum, a) => sum + (parseFloat(a['Elevation Gain (ft)']) || 0), 0).toFixed(0)
       };
       
-      // Only add week if it has days in the current month
-      if (days.length > 0) {
+      // Find matching AI summary for this week
+      const weekNumber = getWeekNumber(currentWeekStart);
+      const weekYear = currentWeekStart.getFullYear();
+      const matchingSummary = summaries.find(summary => {
+        return summary['Week Number'] == weekNumber && summary['Year'] == weekYear;
+      });
+      
+      // Only add week if it intersects with the target month
+      const hasTargetMonthDays = hasMonthDays.some(inMonth => inMonth);
+      if (hasTargetMonthDays) {
         weeks.push({
           weekStart: currentWeekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          weekEnd: weekEnd > monthEnd ? monthEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          weekEnd: weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
           days: days,
-          summary: weekSummary
+          summary: weekSummary,
+          aiSummary: matchingSummary ? matchingSummary['AI Summary'] : null
         });
       }
       
@@ -1094,6 +1245,14 @@ function formatTotalTime(minutes) {
     return `${hours}h ${mins}m`;
   }
   return `${mins} min`;
+}
+
+function getWeekNumber(date) {
+  const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
+  const dayNum = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - dayNum);
+  const yearStart = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
 app.get('/api/summaries', async (req, res) => {
