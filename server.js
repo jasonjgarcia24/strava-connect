@@ -371,7 +371,6 @@ app.get('/', (req, res) => {
                 <div class="sync-section">
                     <label>Activities to sync:</label>
                     <input type="number" id="activityCount" value="3" min="1" max="200">
-                    <small style="color: #666;">(Default: 3 to avoid rate limits)</small>
                     <button class="btn" onclick="syncActivities()">Sync Activities</button>
                 </div>
                 <div id="syncStatus"></div>
@@ -767,7 +766,16 @@ app.get('/', (req, res) => {
                                 week.days.map(day => {
                                     const rowClass = day.isInTargetMonth ? '' : ' class="out-of-month"';
                                     if (day.activities.length === 0) {
-                                        return '<tr' + rowClass + '><td>' + day.date + '</td><td class="no-activity-day" colspan="8">Rest Day</td></tr>';
+                                        // Don't show "Rest Day" for future dates
+                                        const dayDate = new Date(day.dateObj);
+                                        const today = new Date();
+                                        today.setHours(0, 0, 0, 0);
+                                        
+                                        if (dayDate > today) {
+                                            return '<tr' + rowClass + '><td>' + day.date + '</td><td class="no-activity-day" colspan="8"></td></tr>';
+                                        } else {
+                                            return '<tr' + rowClass + '><td>' + day.date + '</td><td class="no-activity-day" colspan="8">Rest Day</td></tr>';
+                                        }
                                     }
                                     return day.activities.map(activity => 
                                         '<tr' + rowClass + '>' +
@@ -1336,6 +1344,7 @@ app.get('/api/daily', async (req, res) => {
         
         days.push({
           date: dayDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+          dateObj: dayDate.toISOString().split('T')[0], // Include YYYY-MM-DD format for comparison
           activities: dayActivities,
           isInTargetMonth: isInTargetMonth
         });
