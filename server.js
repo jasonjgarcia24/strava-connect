@@ -249,6 +249,113 @@ app.get('/', (req, res) => {
             .out-of-month td {
                 border-color: #f0f0f0;
             }
+            
+            /* Mobile Responsive Styles */
+            @media (max-width: 768px) {
+                .header {
+                    padding: 15px 10px;
+                }
+                .header h1 {
+                    font-size: 24px;
+                }
+                .header p {
+                    font-size: 14px;
+                }
+                .container {
+                    padding: 10px;
+                }
+                .nav-tabs {
+                    flex-wrap: wrap;
+                    margin-bottom: 15px;
+                }
+                .nav-tab {
+                    flex: none;
+                    min-width: 80px;
+                    font-size: 12px;
+                    padding: 10px 8px;
+                    text-align: center;
+                }
+                .card {
+                    padding: 15px;
+                    margin-bottom: 15px;
+                }
+                .sync-section {
+                    flex-direction: column;
+                    gap: 10px;
+                    align-items: stretch;
+                }
+                .sync-section input {
+                    width: 100%;
+                    max-width: 120px;
+                }
+                .stats-grid {
+                    grid-template-columns: 1fr 1fr;
+                    gap: 10px;
+                }
+                .stat-card {
+                    padding: 15px 10px;
+                }
+                .stat-value {
+                    font-size: 20px;
+                }
+                .chart-container {
+                    height: 300px;
+                }
+                table {
+                    font-size: 12px;
+                }
+                th, td {
+                    padding: 8px 4px;
+                }
+                .daily-table th,
+                .daily-table td {
+                    padding: 6px 3px;
+                    font-size: 11px;
+                }
+                .equipment-info {
+                    max-width: 80px;
+                }
+                .notes-cell {
+                    max-width: 100px;
+                }
+                .week-summary {
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                .week-ai-summary {
+                    padding: 10px 15px;
+                    font-size: 12px;
+                }
+            }
+            
+            @media (max-width: 480px) {
+                .nav-tabs {
+                    justify-content: center;
+                }
+                .nav-tab {
+                    min-width: 60px;
+                    font-size: 10px;
+                    padding: 8px 4px;
+                }
+                .stats-grid {
+                    grid-template-columns: 1fr;
+                }
+                .chart-container {
+                    height: 250px;
+                }
+                .daily-table {
+                    display: block;
+                    overflow-x: auto;
+                    white-space: nowrap;
+                }
+                .sync-section > * {
+                    text-align: center;
+                }
+                .btn {
+                    width: 100%;
+                    max-width: 200px;
+                }
+            }
         </style>
     </head>
     <body>
@@ -297,11 +404,11 @@ app.get('/', (req, res) => {
             <!-- Daily Tab -->
             <div id="daily" class="tab-content">
                 <div class="card">
-                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                    <div class="daily-header" style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
                         <h3>📆 Daily Training Log</h3>
-                        <div style="display: flex; align-items: center; gap: 10px;">
+                        <div class="daily-controls" style="display: flex; align-items: center; gap: 10px;">
                             <label for="monthSelector" style="font-weight: 500;">Month:</label>
-                            <select id="monthSelector" onchange="loadDailyData()" style="padding: 8px; border: 2px solid #ddd; border-radius: 4px; background: white;">
+                            <select id="monthSelector" onchange="loadDailyData()" style="padding: 8px; border: 2px solid #ddd; border-radius: 4px; background: white; min-width: 150px;">
                                 <!-- Options populated by JavaScript -->
                             </select>
                         </div>
