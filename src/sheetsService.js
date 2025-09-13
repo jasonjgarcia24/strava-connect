@@ -61,6 +61,8 @@ class SheetsService {
           return await this.#updateWeeklySummary(...args);
         case '#getExistingWeeklySummaries':
           return await this.#getExistingWeeklySummaries();
+        case '#getExistingActivityIds':
+          return await this.#getExistingActivityIds();
       }
     }
     finally {
@@ -99,6 +101,10 @@ class SheetsService {
 
   async updateWeeklySummary(summaryData) {
     return await this.safeAsyncCall('#updateWeeklySummary', [summaryData]);
+  }
+
+  async getExistingActivityIds() {
+    return await this.safeAsyncCall('#getExistingActivityIds');
   }
 
   async getExistingWeeklySummaries() {
@@ -346,24 +352,6 @@ class SheetsService {
 
   async #appendWeeklySummary(summaryData) {
     try {
-      // Check if this week already exists to avoid duplicates
-      const existingResponse = await this.#sheets.spreadsheets.values.get({
-        spreadsheetId: this.#encryption.decrypt(this.sheetsId),
-        range: 'Week Summary!A:B'
-      });
-
-      const existingRows = existingResponse.data.values || [];
-      const isDuplicate = existingRows.some((row, index) => {
-        if (index === 0) return false; // Skip header
-        return row[0] === summaryData.weekNumber.toString() && 
-               row[1] === summaryData.year.toString();
-      });
-
-      if (isDuplicate) {
-        console.log(`Week ${summaryData.weekNumber} ${summaryData.year} summary already exists. Skipping.`);
-        return;
-      }
-
       const row = [
         summaryData.weekNumber,
         summaryData.year,
@@ -418,6 +406,27 @@ class SheetsService {
 
     } catch (error) {
       console.error('Error getting existing weekly summaries:', error.message);
+      return [];
+    }
+  }
+
+  async #getExistingActivityIds() {
+    try {
+      const response = await this.#sheets.spreadsheets.values.get({
+        spreadsheetId: this.#encryption.decrypt(this.sheetsId),
+        range: 'Daily!A:A'
+      });
+
+      if (!response.data.values) return [];
+
+      const existingIds = response.data.values
+        .slice(1) // Skip header row
+        .map(row => row[0]) // Get ID column
+        .filter(id => id && id.trim() !== ''); // Filter out empty values
+
+      return existingIds;
+    } catch (error) {
+      console.error('Error getting existing activity IDs:', error.message);
       return [];
     }
   }

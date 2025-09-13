@@ -37,6 +37,11 @@ class StravaConnectApp {
       // Initialize Google Sheets with headers
       await this.sheetsService.createHeaderRow();
       
+      // Get existing activity IDs from the sheet to avoid re-processing
+      console.log('Checking for existing activities in Google Sheets...');
+      const existingActivityIds = await this.sheetsService.getExistingActivityIds();
+      console.log(`Found ${existingActivityIds.length} existing activities in sheet`);
+      
       // Fetch recent activities from Strava
       console.log(`Fetching ${activityCount} recent activities from Strava...`);
       const activities = await this.stravaService.getActivities(1, activityCount);
@@ -47,14 +52,40 @@ class StravaConnectApp {
       }
 
       console.log(`Found ${activities.length} activities`);
+      
+      // Filter out activities that already exist in the sheet
+      const newActivities = activities.filter(activity => 
+        !existingActivityIds.includes(activity.id.toString())
+      );
+      
+      if (newActivities.length === 0) {
+        console.log('✅ All activities are already in the sheet - no new activities to process');
+        // Still run weekly summary check
+        console.log('\n📅 Checking if weekly summary should be auto-generated...');
+        try {
+          const allActivities = await this.sheetsService.getAllActivities();
+          if (allActivities.length > 0) {
+            const activitiesWithDates = allActivities.map(activity => ({
+              ...activity,
+              start_date_local: new Date(activity.Date).toISOString()
+            }));
+            await this.weeklySummaryService.generateCurrentWeekSummaryIfNeeded(activitiesWithDates);
+          }
+        } catch (error) {
+          console.warn('⚠️  Weekly summary auto-generation failed:', error.message);
+        }
+        return;
+      }
+      
+      console.log(`Processing ${newActivities.length} new activities (${activities.length - newActivities.length} already exist)`);
 
       // Process activities with location data
-      console.log('Enriching activities with location data...');
+      console.log('Enriching new activities with location data...');
       const enrichedActivities = [];
       
-      for (let i = 0; i < activities.length; i++) {
-        const activity = activities[i];
-        console.log(`Processing activity ${i + 1}/${activities.length}: ${activity.name}`);
+      for (let i = 0; i < newActivities.length; i++) {
+        const activity = newActivities[i];
+        console.log(`Processing activity ${i + 1}/${newActivities.length}: ${activity.name}`);
         
         // Find location for this activity
         const locationData = await this.locationService.findActivityLocation(activity);
@@ -64,7 +95,7 @@ class StravaConnectApp {
         enrichedActivities.push(formattedActivity);
         
         // Add delay to respect API rate limits
-        if (i < activities.length - 1) {
+        if (i < newActivities.length - 1) {
           await new Promise(resolve => setTimeout(resolve, 2000)); // 2 second delay
         }
       }
