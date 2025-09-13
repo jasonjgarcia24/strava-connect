@@ -192,6 +192,7 @@ class WeeklySummaryService {
     try {
       const response = await hf.chatCompletion({
         model: this.modelName,
+        provider: "cerebras",
         messages: [
           {
             role: "system",
