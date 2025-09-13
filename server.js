@@ -12,7 +12,25 @@ app.get('/', (req, res) => {
       <head><title>Strava Sync</title></head>
       <body style="font-family: Arial; padding: 20px;">
         <h1>🏃‍♂️ Strava Sync</h1>
-        <p>Click the button to sync your activities:</p>
+        <p>Sync your recent Strava activities to Google Sheets:</p>
+        
+        <div style="margin: 20px 0;">
+          <label for="activityCount" style="display: block; margin-bottom: 5px;">
+            Number of activities to sync:
+          </label>
+          <input 
+            type="number" 
+            id="activityCount" 
+            value="3" 
+            min="1" 
+            max="200"
+            style="padding: 8px; width: 80px; margin-right: 10px;"
+          />
+          <small style="color: #666;">
+            (Default: 3 to avoid rate limits. Higher numbers may fail.)
+          </small>
+        </div>
+        
         <button onclick="sync()" style="padding: 10px 20px; font-size: 16px;">
           Sync Activities
         </button>
@@ -21,10 +39,12 @@ app.get('/', (req, res) => {
         <script>
           async function sync() {
             const status = document.getElementById('status');
-            status.innerHTML = '⏳ Syncing activities...';
+            const activityCount = document.getElementById('activityCount').value;
+            
+            status.innerHTML = \`⏳ Syncing \${activityCount} activities...\`;
             
             try {
-              const response = await fetch('/sync');
+              const response = await fetch(\`/sync?count=\${activityCount}\`);
               const result = await response.text();
               status.innerHTML = '✅ ' + result;
             } catch (error) {
@@ -40,11 +60,18 @@ app.get('/', (req, res) => {
 // Sync endpoint
 app.get('/sync', async (req, res) => {
   try {
-    console.log('Starting sync from web trigger...');
+    const activityCount = parseInt(req.query.count) || 3; // Default to 3 if not provided
+    
+    // Validate the count
+    if (activityCount < 1 || activityCount > 200) {
+      return res.status(400).send('Activity count must be between 1 and 200');
+    }
+    
+    console.log(`Starting sync from web trigger... (${activityCount} activities)`);
     
     const stravaApp = new StravaConnectApp();
-    await stravaApp.syncActivities(); // Start with fewer activities for testing
-    res.send('Sync completed successfully!');
+    await stravaApp.syncActivities(activityCount);
+    res.send(`Sync completed successfully! Processed ${activityCount} activities.`);
   } catch (error) {
     console.error('Sync error details:', {
       message: error.message,

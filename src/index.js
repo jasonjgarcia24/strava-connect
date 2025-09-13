@@ -30,9 +30,10 @@ class StravaConnectApp {
     }
   }
 
-  async syncActivities(activityCount = 30) {
+  async syncActivities(activityCount = 3) {
     try {
       console.log('Starting Strava to Google Sheets sync...');
+      console.log(`📊 Syncing ${activityCount} activities (default reduced to 3 to avoid Strava rate limits)`);
             
       // Initialize Google Sheets with headers
       await this.sheetsService.createHeaderRow();
@@ -43,7 +44,7 @@ class StravaConnectApp {
       console.log(`Found ${existingActivityIds.length} existing activities in sheet`);
       
       // Fetch recent activities from Strava
-      console.log(`Fetching ${activityCount} recent activities from Strava...`);
+      console.log(`Fetching ${activityCount} recent activities from Strava... (Rate limit friendly: fetching fewer activities)`);
       const activities = await this.stravaService.getActivities(1, activityCount);
       
       if (!activities || activities.length === 0) {
@@ -150,19 +151,21 @@ class StravaConnectApp {
     }
     
     // Default behavior - sync activities
-    const activityCount = args[0] ? parseInt(args[0]) : 30;
+    const activityCount = args[0] ? parseInt(args[0]) : 3;
     
     if (isNaN(activityCount) || activityCount < 1) {
       console.error('Invalid activity count. Please provide a positive number.');
       console.error('');
       console.error('Usage:');
-      console.error('  node src/index.js [activity_count]     - Sync activities (default: 30)');
+      console.error('  node src/index.js [activity_count]     - Sync activities (default: 3, rate limit friendly)');
       console.error('  node src/index.js summary [date]       - Generate weekly summary');
       console.error('  node src/index.js weekly [date]        - Generate weekly summary');
       console.error('  node src/index.js backfill [weeks]     - Generate missing weekly summaries');
       console.error('');
       console.error('Examples:');
-      console.error('  node src/index.js 50                   - Sync 50 activities');
+      console.error('  node src/index.js                      - Sync 3 activities (default, rate limit friendly)');
+      console.error('  node src/index.js 10                   - Sync 10 activities');
+      console.error('  node src/index.js 50                   - Sync 50 activities (caution: may hit rate limits)');
       console.error('  node src/index.js summary              - Current week summary');
       console.error('  node src/index.js summary 2024-01-15   - Summary for week containing Jan 15');
       console.error('  node src/index.js backfill             - Check last 12 weeks for missing summaries');
