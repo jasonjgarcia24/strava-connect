@@ -51,6 +51,12 @@ class SheetsService {
           return await this.#appendActivities(...args);
         case '#clearSheet':
           return await this.#clearSheet();
+        case '#getAllActivities':
+          return await this.#getAllActivities();
+        case '#createWeeklySummaryHeaders':
+          return await this.#createWeeklySummaryHeaders();
+        case '#appendWeeklySummary':
+          return await this.#appendWeeklySummary(...args);
       }
     }
     finally {
@@ -73,6 +79,18 @@ class SheetsService {
 
   async appendActivities(activities) {
     return await this.safeAsyncCall('#appendActivities', [activities]);
+  }
+
+  async getAllActivities() {
+    return await this.safeAsyncCall('#getAllActivities');
+  }
+
+  async createWeeklySummaryHeaders() {
+    return await this.safeAsyncCall('#createWeeklySummaryHeaders');
+  }
+
+  async appendWeeklySummary(summaryData) {
+    return await this.safeAsyncCall('#appendWeeklySummary', [summaryData]);
   }
 
   async #createHeaderRow() {
@@ -128,13 +146,13 @@ class SheetsService {
       // Check if headers already exist
       const response = await this.#sheets.spreadsheets.values.get({
         spreadsheetId: this.#encryption.decrypt(this.sheetsId),
-        range: 'A1:AR1'
+        range: 'Daily!A1:AR1'
       });
 
       if (!response.data.values || response.data.values.length === 0) {
         await this.#sheets.spreadsheets.values.update({
           spreadsheetId: this.#encryption.decrypt(this.sheetsId),
-          range: 'A1:AR1',
+          range: 'Daily!A1:AR1',
           valueInputOption: 'RAW',
           resource: {
             values: [headers]
@@ -152,7 +170,7 @@ class SheetsService {
     try {
       const response = await this.#sheets.spreadsheets.values.get({
         spreadsheetId: this.#encryption.decrypt(this.sheetsId),
-        range: 'A:A'
+        range: 'Daily!A:A'
       });
 
       if (!response.data.values) return [];
@@ -233,7 +251,7 @@ class SheetsService {
 
       await this.#sheets.spreadsheets.values.append({
         spreadsheetId: this.#encryption.decrypt(this.sheetsId),
-        range: 'A:AR',
+        range: 'Daily!A:AR',
         valueInputOption: 'RAW',
         resource: {
           values: rows
@@ -243,6 +261,122 @@ class SheetsService {
       console.log(`Added ${newActivities.length} new activities to the spreadsheet`);
     } catch (error) {
       console.error('Error appending activities:', error.message);
+      throw error;
+    }
+  }
+
+  async #getAllActivities() {
+    try {
+      const response = await this.#sheets.spreadsheets.values.get({
+        spreadsheetId: this.#encryption.decrypt(this.sheetsId),
+        range: 'Daily!A:AR'
+      });
+
+      if (!response.data.values || response.data.values.length <= 1) {
+        return []; // No data or only headers
+      }
+
+      const headers = response.data.values[0];
+      const rows = response.data.values.slice(1);
+
+      // Convert rows to objects using headers
+      return rows.map(row => {
+        const activity = {};
+        headers.forEach((header, index) => {
+          activity[header] = row[index] || '';
+        });
+        return activity;
+      });
+
+    } catch (error) {
+      console.error('Error getting all activities from sheet:', error.message);
+      return [];
+    }
+  }
+
+  async #createWeeklySummaryHeaders() {
+    const headers = [
+      'Week Number',
+      'Year',
+      'Week Start Date',
+      'Week End Date',
+      'Week Range',
+      'Total Activities', 
+      'Activities With Notes',
+      'AI Summary',
+      'Activity IDs',
+      'Generated Date'
+    ];
+
+    try {
+      // Check if headers already exist
+      const response = await this.#sheets.spreadsheets.values.get({
+        spreadsheetId: this.#encryption.decrypt(this.sheetsId),
+        range: 'Week Summary!A1:J1'
+      });
+
+      if (!response.data.values || response.data.values.length === 0) {
+        await this.#sheets.spreadsheets.values.update({
+          spreadsheetId: this.#encryption.decrypt(this.sheetsId),
+          range: 'Week Summary!A1:J1',
+          valueInputOption: 'RAW',
+          resource: {
+            values: [headers]
+          }
+        });
+        console.log('Week Summary header row created');
+      }
+    } catch (error) {
+      console.error('Error creating Week Summary header row:', error.message);
+      throw error;
+    }
+  }
+
+  async #appendWeeklySummary(summaryData) {
+    try {
+      // Check if this week already exists to avoid duplicates
+      const existingResponse = await this.#sheets.spreadsheets.values.get({
+        spreadsheetId: this.#encryption.decrypt(this.sheetsId),
+        range: 'Week Summary!A:B'
+      });
+
+      const existingRows = existingResponse.data.values || [];
+      const isDuplicate = existingRows.some((row, index) => {
+        if (index === 0) return false; // Skip header
+        return row[0] === summaryData.weekNumber.toString() && 
+               row[1] === summaryData.year.toString();
+      });
+
+      if (isDuplicate) {
+        console.log(`Week ${summaryData.weekNumber} ${summaryData.year} summary already exists. Skipping.`);
+        return;
+      }
+
+      const row = [
+        summaryData.weekNumber,
+        summaryData.year,
+        summaryData.weekStartDate,
+        summaryData.weekEndDate,
+        summaryData.weekRange,
+        summaryData.totalActivities,
+        summaryData.activitiesWithNotes,
+        summaryData.summary,
+        summaryData.activityIds.join(', '),
+        new Date().toISOString()
+      ];
+
+      await this.#sheets.spreadsheets.values.append({
+        spreadsheetId: this.#encryption.decrypt(this.sheetsId),
+        range: 'Week Summary!A:J',
+        valueInputOption: 'RAW',
+        resource: {
+          values: [row]
+        }
+      });
+
+      console.log(`Added week ${summaryData.weekNumber} summary to the spreadsheet`);
+    } catch (error) {
+      console.error('Error appending weekly summary:', error.message);
       throw error;
     }
   }

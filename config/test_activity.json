@@ -4,70 +4,82 @@
     "id": 14629821,
     "resource_state": 1
   },
-  "name": "Morning Workout",
-  "distance": 0,
-  "moving_time": 835,
-  "elapsed_time": 835,
-  "total_elevation_gain": 0,
-  "type": "Workout",
-  "sport_type": "Workout",
-  "id": 15650959587,
-  "start_date": "2025-08-31T15:57:38Z",
-  "start_date_local": "2025-08-31T08:57:38Z",
-  "timezone": "(GMT-07:00) America/Creston",
+  "name": "Evening Trail Run",
+  "distance": 6505.5,
+  "moving_time": 2119,
+  "elapsed_time": 2119,
+  "total_elevation_gain": 209,
+  "type": "Run",
+  "sport_type": "TrailRun",
+  "workout_type": 0,
+  "id": 15781862779,
+  "start_date": "2025-09-12T01:50:05Z",
+  "start_date_local": "2025-09-11T18:50:05Z",
+  "timezone": "(GMT-08:00) America/Los_Angeles",
   "utc_offset": -25200,
   "location_city": null,
   "location_state": null,
   "location_country": null,
-  "achievement_count": 0,
+  "achievement_count": 2,
   "kudos_count": 11,
   "comment_count": 0,
   "athlete_count": 1,
   "photo_count": 0,
   "map": {
-    "id": "a15650959587",
-    "polyline": "",
+    "id": "a15781862779",
+    "polyline": "y_baHzoxgVCEBMAsABoBCIIIq@@GIKUAo@Eg@Qo@Iu@@o@Cm@FUXSFBLPJBDRBBLDN?DADM?i@C]ESOQ}@k@CG?EHEHADBHPLNf@Vf@d@dAVzA`BPVt@fBjAzCp@lAz@x@t@l@NP`Ad@`AVb@BR?HI@WCs@CMu@mAQa@I]Gm@?e@BMHG^Ad@FjABXHJ@\\C\\@v@MV@VEl@\\X@\\JLCNKr@Bf@Kb@JR@VDHFT`@LBP?XC\\KP@VCnAa@TSHa@FKRKd@Mh@ILMH[BiAT_BLwAv@mD@I\\iA\\{ATy@PeADq@@a@Cs@KmAWy@i@qAEYC_@DaAF]Ru@Fe@L}A?oABi@TqABe@?_@SiAEs@Ii@EKMKi@KY[[qAi@eA]mA]cA@}@PyA?sAFUZS`@WJODMBWQeAIGSAACFIV}@Tg@r@[NUPONCJGl@EXE^ADCX?`@IPMRANBFB^p@Nb@V^DBYg@c@gASUWEK@MBk@VM@w@Lc@EM?m@XY`@Q?a@TMPc@dAIb@BBTDHFLr@C^ELMPy@d@KXAd@Dx@UnACZBXt@jCr@zAJt@FPFLVTD@^FTPLb@?l@Jh@HZD`@Ed@UpAGt@?xAI`@KjAWhAGb@AX?d@D`@\\nA^t@Nv@D|@?j@Cx@ShAg@hBc@zB{@dDIh@Ex@Mx@Gj@AjACTSPc@FcAXIJCN?XKLcBZ_@@_AXI?IES]QKOCYC[Mi@Hm@E_@LSGW@MAy@[o@?WBWJq@?k@Eq@Aw@Im@?KFAFCX?\\Hv@Pd@x@pAFL@t@AVGF[AiAQaBs@WQQUq@o@g@s@[i@sAgDo@yAU_@m@w@k@i@{@WYQi@g@u@i@KEKL@FlAjADNFd@AZCDQ?SEc@e@GAKDOJEL?d@CX@`@Hv@Tx@Ax@@NDFJDl@AT\\?vCCt@?|C",
     "resource_state": 3,
-    "summary_polyline": ""
+    "summary_polyline": "a`baH|{wgVQW}@k@CGBINCDBHPLNf@Vf@d@dAVlAnA^h@~AvD`@jAp@lAz@x@t@l@NP`Ad@fAVp@BHI@WCs@CMu@mAQa@I]Gm@?e@BMHG^Ad@FjABXHJ@\\C\\@v@MV@VEl@\\X@\\JLCNKr@Bf@Kb@JR@VDHFT`@LBP?XC\\KP@VCnAa@TSHa@FKRKd@Mh@ILMHUB_@?o@T_BLwAv@mD@I\\iA\\{ATy@PeADq@@a@Cs@KmAWy@i@qAEYC_@DaAF]Ru@Fe@L}A?oABi@TqABe@?_@SiAEs@Ii@EKMKi@KY[[qAi@eA]mA]cA@}@PyA?sAFUZS`@WJODMBWQeAIGSAACFIXcARa@r@[NUPOVIjAM~@E`@IPMRARDB@^p@Nb@V^DBYg@c@gAOQOGKAYDk@VM@w@Lc@EM?m@XY`@Q?e@Xm@rAIb@BBTDHFJh@?`@GTIJUPg@XKXAd@Dx@UnACZBXt@jCr@zAJt@FPFLVTD@^FTPLb@?l@Jh@HZD`@Ed@UpAGt@?xAI`@KjAWhAGb@AX?d@D`@\\nA^t@Nv@D|@?j@Cx@ShAg@hBc@zB{@dDIh@Ex@Mx@Gj@AjACTSPc@FcAXIJCN?XKLcBZ_@@_AXI?IES]QKOCYC[Mi@Hm@E_@LSGW@MAy@[o@?WBWJq@?k@Eq@Aw@Im@?KFAFCX?\\Hv@Pd@x@pAFL@t@AVGF[AiAQaBs@WQQUq@o@g@s@[i@sAgDo@yAU_@m@w@k@i@{@WYQi@g@u@i@KEKLDLPLv@v@"
   },
-  "trainer": true,
+  "trainer": false,
   "commute": false,
   "manual": false,
   "private": false,
   "visibility": "everyone",
   "flagged": false,
-  "gear_id": null,
-  "start_latlng": [],
-  "end_latlng": [],
-  "average_speed": 0,
-  "max_speed": 0,
+  "gear_id": "g20235036",
+  "start_latlng": [
+    47.529093,
+    -122.027652
+  ],
+  "end_latlng": [
+    47.529145,
+    -122.028305
+  ],
+  "average_speed": 3.07,
+  "max_speed": 4.46,
+  "average_cadence": 82.6,
+  "average_watts": 336,
+  "max_watts": 509,
+  "weighted_average_watts": 355,
+  "device_watts": true,
+  "kilojoules": 711.7,
   "has_heartrate": true,
-  "average_heartrate": 77.6,
-  "max_heartrate": 146,
+  "average_heartrate": 147.8,
+  "max_heartrate": 165,
   "heartrate_opt_out": false,
   "display_hide_heartrate_option": true,
-  "elev_high": 0,
-  "elev_low": 0,
-  "upload_id": 16716800350,
-  "upload_id_str": "16716800350",
-  "external_id": "garmin_ping_475340848937",
+  "elev_high": 207.6,
+  "elev_low": 40,
+  "upload_id": 16857298417,
+  "upload_id_str": "16857298417",
+  "external_id": "garmin_ping_479345002376",
   "from_accepted_tag": false,
   "pr_count": 0,
   "total_photo_count": 0,
   "has_kudoed": false,
-  "suffer_score": 1,
+  "suffer_score": 55,
   "description": "",
-  "calories": 45,
-  "perceived_exertion": null,
+  "calories": 457,
+  "perceived_exertion": 4,
   "prefer_perceived_exertion": false,
-  "segment_efforts": [],
-  "laps": [
+  "segment_efforts": [
     {
-      "id": 55729619106,
+      "id": 3401409611939671000,
       "resource_state": 2,
-      "name": "Lap 1",
+      "name": "Rainier Trail to East Sunset Trailhead Connector - Uphill",
       "activity": {
-        "id": 15650959587,
+        "id": 15781862779,
         "visibility": "everyone",
         "resource_state": 1
       },
@@ -75,23 +87,796 @@
         "id": 14629821,
         "resource_state": 1
       },
-      "elapsed_time": 835,
-      "moving_time": 835,
-      "start_date": "2025-08-31T15:57:38Z",
-      "start_date_local": "2025-08-31T08:57:38Z",
-      "distance": 0,
-      "average_speed": 0,
-      "max_speed": 0,
+      "elapsed_time": 122,
+      "moving_time": 122,
+      "start_date": "2025-09-12T01:51:32Z",
+      "start_date_local": "2025-09-11T18:51:32Z",
+      "distance": 290.6,
+      "start_index": 87,
+      "end_index": 209,
+      "average_cadence": 83.5,
+      "device_watts": true,
+      "average_watts": 368.8,
+      "average_heartrate": 143.2,
+      "max_heartrate": 146,
+      "segment": {
+        "id": 28036277,
+        "resource_state": 2,
+        "name": "Rainier Trail to East Sunset Trailhead Connector - Uphill",
+        "activity_type": "Run",
+        "distance": 290.6,
+        "average_grade": 8.1,
+        "maximum_grade": 19,
+        "elevation_high": 67.8,
+        "elevation_low": 43.2,
+        "start_latlng": [
+          47.529826,
+          -122.025234
+        ],
+        "end_latlng": [
+          47.528622,
+          -122.024593
+        ],
+        "elevation_profile": null,
+        "elevation_profiles": null,
+        "climb_category": 0,
+        "city": "Issaquah",
+        "state": "Washington",
+        "country": "United States",
+        "private": false,
+        "hazardous": false,
+        "starred": false
+      },
+      "pr_rank": null,
+      "achievements": [],
+      "visibility": "only_me",
+      "kom_rank": null,
+      "hidden": false
+    },
+    {
+      "id": 3401409611940471000,
+      "resource_state": 2,
+      "name": "High School Trail Climb",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 442,
+      "moving_time": 442,
+      "start_date": "2025-09-12T01:59:25Z",
+      "start_date_local": "2025-09-11T18:59:25Z",
+      "distance": 1189.53,
+      "start_index": 560,
+      "end_index": 1002,
+      "average_cadence": 81.7,
+      "device_watts": true,
+      "average_watts": 408.4,
+      "average_heartrate": 157.5,
+      "max_heartrate": 165,
+      "segment": {
+        "id": 2468587,
+        "resource_state": 2,
+        "name": "High School Trail Climb",
+        "activity_type": "Run",
+        "distance": 1189.53,
+        "average_grade": 8.8,
+        "maximum_grade": 26.1,
+        "elevation_high": 153.2,
+        "elevation_low": 49,
+        "start_latlng": [
+          47.5210056,
+          -122.0258388
+        ],
+        "end_latlng": [
+          47.5205173,
+          -122.0121266
+        ],
+        "elevation_profile": null,
+        "elevation_profiles": null,
+        "climb_category": 1,
+        "city": "Issaquah",
+        "state": "WA",
+        "country": "United States",
+        "private": false,
+        "hazardous": false,
+        "starred": false
+      },
+      "pr_rank": null,
+      "achievements": [],
+      "visibility": "everyone",
+      "kom_rank": null,
+      "hidden": false
+    },
+    {
+      "id": 3401409611942198300,
+      "resource_state": 2,
+      "name": "Halfway up Heartbreak",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 172,
+      "moving_time": 172,
+      "start_date": "2025-09-12T01:59:33Z",
+      "start_date_local": "2025-09-11T18:59:33Z",
+      "distance": 469,
+      "start_index": 568,
+      "end_index": 740,
+      "average_cadence": 81.4,
+      "device_watts": true,
+      "average_watts": 405.4,
+      "average_heartrate": 155.3,
+      "max_heartrate": 159,
+      "segment": {
+        "id": 21202502,
+        "resource_state": 2,
+        "name": "Halfway up Heartbreak",
+        "activity_type": "Run",
+        "distance": 469,
+        "average_grade": 11.1,
+        "maximum_grade": 26.4,
+        "elevation_high": 100,
+        "elevation_low": 48,
+        "start_latlng": [
+          47.520706,
+          -122.026174
+        ],
+        "end_latlng": [
+          47.519811,
+          -122.020735
+        ],
+        "elevation_profile": null,
+        "elevation_profiles": null,
+        "climb_category": 0,
+        "city": "Issaquah",
+        "state": "Washington",
+        "country": "United States",
+        "private": false,
+        "hazardous": false,
+        "starred": false
+      },
+      "pr_rank": null,
+      "achievements": [],
+      "visibility": "everyone",
+      "kom_rank": null,
+      "hidden": false
+    },
+    {
+      "id": 3401409611940303000,
+      "resource_state": 2,
+      "name": "High School Trail Descent",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 345,
+      "moving_time": 345,
+      "start_date": "2025-09-12T02:10:44Z",
+      "start_date_local": "2025-09-11T19:10:44Z",
+      "distance": 1211,
+      "start_index": 1239,
+      "end_index": 1584,
+      "average_cadence": 81.8,
+      "device_watts": true,
+      "average_watts": 254.1,
+      "average_heartrate": 140.7,
+      "max_heartrate": 150,
+      "segment": {
+        "id": 24712154,
+        "resource_state": 2,
+        "name": "High School Trail Descent",
+        "activity_type": "Run",
+        "distance": 1211,
+        "average_grade": -8.5,
+        "maximum_grade": 2,
+        "elevation_high": 150.4,
+        "elevation_low": 47.6,
+        "start_latlng": [
+          47.520438,
+          -122.012227
+        ],
+        "end_latlng": [
+          47.520707,
+          -122.026342
+        ],
+        "elevation_profile": null,
+        "elevation_profiles": null,
+        "climb_category": 0,
+        "city": "Issaquah",
+        "state": "Washington",
+        "country": "United States",
+        "private": false,
+        "hazardous": false,
+        "starred": false
+      },
+      "pr_rank": null,
+      "achievements": [],
+      "visibility": "everyone",
+      "kom_rank": null,
+      "hidden": false
+    },
+    {
+      "id": 3401409611940167700,
+      "resource_state": 2,
+      "name": "Rainier Trail from Evans Str",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 162,
+      "moving_time": 162,
+      "start_date": "2025-09-12T02:20:23Z",
+      "start_date_local": "2025-09-11T19:20:23Z",
+      "distance": 607.8,
+      "start_index": 1818,
+      "end_index": 1980,
+      "average_cadence": 82.7,
+      "device_watts": true,
+      "average_watts": 344.1,
+      "average_heartrate": 151.7,
+      "max_heartrate": 155,
+      "segment": {
+        "id": 9591785,
+        "resource_state": 2,
+        "name": "Rainier Trail from Evans Str",
+        "activity_type": "Run",
+        "distance": 607.8,
+        "average_grade": 1.2,
+        "maximum_grade": 9.3,
+        "elevation_high": -4,
+        "elevation_low": -14,
+        "start_latlng": [
+          47.525547,
+          -122.027884
+        ],
+        "end_latlng": [
+          47.529896,
+          -122.02364
+        ],
+        "elevation_profile": null,
+        "elevation_profiles": null,
+        "climb_category": 0,
+        "city": "Issaquah",
+        "state": "Washington",
+        "country": "United States",
+        "private": false,
+        "hazardous": false,
+        "starred": false
+      },
+      "pr_rank": null,
+      "achievements": [],
+      "visibility": "everyone",
+      "kom_rank": null,
+      "hidden": false
+    },
+    {
+      "id": 3401409611940417500,
+      "resource_state": 2,
+      "name": "Rainier Trail to East Sunset Trailhead Connector - Downhill",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 63,
+      "moving_time": 63,
+      "start_date": "2025-09-12T02:22:49Z",
+      "start_date_local": "2025-09-11T19:22:49Z",
+      "distance": 201.3,
+      "start_index": 1964,
+      "end_index": 2027,
+      "average_cadence": 84.7,
+      "device_watts": true,
+      "average_watts": 273.3,
+      "average_heartrate": 152.1,
+      "max_heartrate": 154,
+      "segment": {
+        "id": 23522446,
+        "resource_state": 2,
+        "name": "Rainier Trail to East Sunset Trailhead Connector - Downhill",
+        "activity_type": "Run",
+        "distance": 201.3,
+        "average_grade": -12.3,
+        "maximum_grade": 10,
+        "elevation_high": 66.7,
+        "elevation_low": 42,
+        "start_latlng": [
+          47.529098,
+          -122.024435
+        ],
+        "end_latlng": [
+          47.529689,
+          -122.024886
+        ],
+        "elevation_profile": null,
+        "elevation_profiles": null,
+        "climb_category": 0,
+        "city": "Issaquah",
+        "state": "Washington",
+        "country": "United States",
+        "private": false,
+        "hazardous": false,
+        "starred": false
+      },
+      "pr_rank": null,
+      "achievements": [],
+      "visibility": "only_me",
+      "kom_rank": null,
+      "hidden": false
+    }
+  ],
+  "splits_metric": [
+    {
+      "distance": 1000.8,
+      "elapsed_time": 344,
+      "elevation_difference": 22.2,
+      "moving_time": 344,
+      "split": 1,
+      "average_speed": 2.91,
+      "average_grade_adjusted_speed": 3.28,
+      "average_heartrate": 137.40762463343108,
+      "pace_zone": 1
+    },
+    {
+      "distance": 999.6,
+      "elapsed_time": 325,
+      "elevation_difference": 16.2,
+      "moving_time": 325,
+      "split": 2,
+      "average_speed": 3.08,
+      "average_grade_adjusted_speed": 3.46,
+      "average_heartrate": 145.0430769230769,
+      "pace_zone": 2
+    },
+    {
+      "distance": 1001.7,
+      "elapsed_time": 361,
+      "elevation_difference": 89.2,
+      "moving_time": 361,
+      "split": 3,
+      "average_speed": 2.77,
+      "average_grade_adjusted_speed": 4.01,
+      "average_heartrate": 159.30747922437672,
+      "pace_zone": 3
+    },
+    {
+      "distance": 1000.3,
+      "elapsed_time": 334,
+      "elevation_difference": -30.6,
+      "moving_time": 334,
+      "split": 4,
+      "average_speed": 2.99,
+      "average_grade_adjusted_speed": 3.55,
+      "average_heartrate": 149.7694610778443,
+      "pace_zone": 2
+    },
+    {
+      "distance": 1000.4,
+      "elapsed_time": 302,
+      "elevation_difference": -79.8,
+      "moving_time": 302,
+      "split": 5,
+      "average_speed": 3.31,
+      "average_grade_adjusted_speed": 3.1,
+      "average_heartrate": 140.30132450331126,
+      "pace_zone": 1
+    },
+    {
+      "distance": 1000.2,
+      "elapsed_time": 302,
+      "elevation_difference": 4.4,
+      "moving_time": 302,
+      "split": 6,
+      "average_speed": 3.31,
+      "average_grade_adjusted_speed": 3.44,
+      "average_heartrate": 153.5496688741722,
+      "pace_zone": 2
+    },
+    {
+      "distance": 503.8,
+      "elapsed_time": 151,
+      "elevation_difference": -23.4,
+      "moving_time": 151,
+      "split": 7,
+      "average_speed": 3.34,
+      "average_grade_adjusted_speed": 3.17,
+      "average_heartrate": 148.74834437086093,
+      "pace_zone": 1
+    }
+  ],
+  "splits_standard": [
+    {
+      "distance": 1610.4,
+      "elapsed_time": 527,
+      "elevation_difference": 11.6,
+      "moving_time": 527,
+      "split": 1,
+      "average_speed": 3.06,
+      "average_grade_adjusted_speed": 3.28,
+      "average_heartrate": 139.1583969465649,
+      "pace_zone": 1
+    },
+    {
+      "distance": 1610.3,
+      "elapsed_time": 594,
+      "elevation_difference": 152,
+      "moving_time": 594,
+      "split": 2,
+      "average_speed": 2.71,
+      "average_grade_adjusted_speed": 4.06,
+      "average_heartrate": 157.25757575757575,
+      "pace_zone": 3
+    },
+    {
+      "distance": 1608.9,
+      "elapsed_time": 489,
+      "elevation_difference": -150.2,
+      "moving_time": 489,
+      "split": 3,
+      "average_speed": 3.29,
+      "average_grade_adjusted_speed": 3.07,
+      "average_heartrate": 142.02658486707566,
+      "pace_zone": 1
+    },
+    {
+      "distance": 1610.5,
+      "elapsed_time": 488,
+      "elevation_difference": -12.8,
+      "moving_time": 488,
+      "split": 4,
+      "average_speed": 3.3,
+      "average_grade_adjusted_speed": 3.36,
+      "average_heartrate": 151.54918032786884,
+      "pace_zone": 1
+    },
+    {
+      "distance": 66.7,
+      "elapsed_time": 21,
+      "elevation_difference": -2.4,
+      "moving_time": 21,
+      "split": 5,
+      "average_speed": 3.18,
+      "average_grade_adjusted_speed": 2.96,
+      "average_heartrate": 142.61904761904762,
+      "pace_zone": 1
+    }
+  ],
+  "laps": [
+    {
+      "id": 56200117305,
+      "resource_state": 2,
+      "name": "Lap 1",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 527,
+      "moving_time": 527,
+      "start_date": "2025-09-12T01:50:05Z",
+      "start_date_local": "2025-09-11T18:50:05Z",
+      "distance": 1609.34,
+      "average_speed": 3.05,
+      "max_speed": 3.88,
       "lap_index": 1,
       "split": 1,
       "start_index": 0,
-      "end_index": 835,
+      "end_index": 387,
+      "total_elevation_gain": 38,
+      "average_cadence": 83.6,
+      "device_watts": true,
+      "average_watts": 332.4,
+      "average_heartrate": 139.2,
+      "max_heartrate": 150,
+      "pace_zone": 1
+    },
+    {
+      "id": 56200117310,
+      "resource_state": 2,
+      "name": "Lap 2",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 593,
+      "moving_time": 593,
+      "start_date": "2025-09-12T01:58:54Z",
+      "start_date_local": "2025-09-11T18:58:54Z",
+      "distance": 1609.34,
+      "average_speed": 2.71,
+      "max_speed": 3.76,
+      "lap_index": 2,
+      "split": 2,
+      "start_index": 388,
+      "end_index": 981,
+      "total_elevation_gain": 154.8,
+      "average_cadence": 81.7,
+      "device_watts": true,
+      "average_watts": 415.4,
+      "average_heartrate": 157.3,
+      "max_heartrate": 165,
+      "pace_zone": 1
+    },
+    {
+      "id": 56200117314,
+      "resource_state": 2,
+      "name": "Lap 3",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 489,
+      "moving_time": 489,
+      "start_date": "2025-09-12T02:08:48Z",
+      "start_date_local": "2025-09-11T19:08:48Z",
+      "distance": 1609.34,
+      "average_speed": 3.29,
+      "max_speed": 3.9,
+      "lap_index": 3,
+      "split": 3,
+      "start_index": 982,
+      "end_index": 1470,
+      "total_elevation_gain": 1.6,
+      "average_cadence": 82.6,
+      "device_watts": true,
+      "average_watts": 244.6,
+      "average_heartrate": 141.9,
+      "max_heartrate": 161,
+      "pace_zone": 1
+    },
+    {
+      "id": 56200117318,
+      "resource_state": 2,
+      "name": "Lap 4",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 487,
+      "moving_time": 487,
+      "start_date": "2025-09-12T02:16:57Z",
+      "start_date_local": "2025-09-11T19:16:57Z",
+      "distance": 1609.34,
+      "average_speed": 3.3,
+      "max_speed": 4.46,
+      "lap_index": 4,
+      "split": 4,
+      "start_index": 1471,
+      "end_index": 1853,
+      "total_elevation_gain": 23.2,
+      "average_cadence": 82.6,
+      "device_watts": true,
+      "average_watts": 336.3,
+      "average_heartrate": 151.6,
+      "max_heartrate": 158,
+      "pace_zone": 1
+    },
+    {
+      "id": 56200117320,
+      "resource_state": 2,
+      "name": "Lap 5",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 21,
+      "moving_time": 21,
+      "start_date": "2025-09-12T02:25:05Z",
+      "start_date_local": "2025-09-11T19:25:05Z",
+      "distance": 69.48,
+      "average_speed": 3.31,
+      "max_speed": 3.42,
+      "lap_index": 5,
+      "split": 5,
+      "start_index": 1853,
+      "end_index": 1853,
       "total_elevation_gain": 0,
-      "device_watts": false,
-      "average_heartrate": 77.6,
-      "max_heartrate": 146
+      "average_cadence": 80.5,
+      "device_watts": true,
+      "average_watts": 298.6,
+      "average_heartrate": 142.6,
+      "max_heartrate": 143,
+      "pace_zone": 1
     }
   ],
+  "best_efforts": [
+    {
+      "id": 66204744464,
+      "resource_state": 2,
+      "name": "400m",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 115,
+      "moving_time": 115,
+      "start_date": "2025-09-12T01:50:05Z",
+      "start_date_local": "2025-09-11T18:50:05Z",
+      "distance": 400,
+      "pr_rank": null,
+      "achievements": [],
+      "start_index": 1877,
+      "end_index": 1992
+    },
+    {
+      "id": 66204744465,
+      "resource_state": 2,
+      "name": "1/2 mile",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 235,
+      "moving_time": 235,
+      "start_date": "2025-09-12T01:50:05Z",
+      "start_date_local": "2025-09-11T18:50:05Z",
+      "distance": 805,
+      "pr_rank": null,
+      "achievements": [],
+      "start_index": 1756,
+      "end_index": 1991
+    },
+    {
+      "id": 66204744466,
+      "resource_state": 2,
+      "name": "1K",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 294,
+      "moving_time": 294,
+      "start_date": "2025-09-12T01:50:05Z",
+      "start_date_local": "2025-09-11T18:50:05Z",
+      "distance": 1000,
+      "pr_rank": null,
+      "achievements": [],
+      "start_index": 1238,
+      "end_index": 1532
+    },
+    {
+      "id": 66204744461,
+      "resource_state": 2,
+      "name": "1 mile",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 484,
+      "moving_time": 484,
+      "start_date": "2025-09-12T01:50:05Z",
+      "start_date_local": "2025-09-11T18:50:05Z",
+      "distance": 1609,
+      "pr_rank": null,
+      "achievements": [],
+      "start_index": 1507,
+      "end_index": 1991
+    },
+    {
+      "id": 66204744462,
+      "resource_state": 2,
+      "name": "2 mile",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 974,
+      "moving_time": 974,
+      "start_date": "2025-09-12T01:50:05Z",
+      "start_date_local": "2025-09-11T18:50:05Z",
+      "distance": 3219,
+      "pr_rank": null,
+      "achievements": [],
+      "start_index": 1137,
+      "end_index": 2111
+    },
+    {
+      "id": 66204744463,
+      "resource_state": 2,
+      "name": "5K",
+      "activity": {
+        "id": 15781862779,
+        "visibility": "everyone",
+        "resource_state": 1
+      },
+      "athlete": {
+        "id": 14629821,
+        "resource_state": 1
+      },
+      "elapsed_time": 1615,
+      "moving_time": 1615,
+      "start_date": "2025-09-12T01:50:05Z",
+      "start_date_local": "2025-09-11T18:50:05Z",
+      "distance": 5000,
+      "pr_rank": null,
+      "achievements": [],
+      "start_index": 389,
+      "end_index": 2004
+    }
+  ],
+  "gear": {
+    "id": "g20235036",
+    "primary": false,
+    "name": "HOKA Challenger 7 - 0",
+    "nickname": "",
+    "resource_state": 2,
+    "retired": false,
+    "distance": 210097,
+    "converted_distance": 130.5
+  },
   "photos": {
     "primary": null,
     "count": 0
@@ -120,8 +905,35 @@
   ],
   "hide_from_home": false,
   "device_name": "Garmin Enduro 3",
-  "embed_token": "c8cecf323ed72b0ad1c3d0bc48fd19d74ee53ac7",
+  "embed_token": "ae84d2fd0708e01e3cd59cf9f82b5c3d536aa394",
+  "private_note": "During morning, the foot felt fine. I had a PT appointment this morning at 8am. I relayed to my PT that I've been noticing soreness on the lateral side of my right ankle in the spot where it's common to be recovering from a high ankle sprain. I started having this soreness following this past Friday's hike. I didn't twist my ankle at all, so no idea where this has been coming from... We worked on right calf tightness through releases. PT recommended to continue to use foam roller and work on continued work on right calf tightness. The calf felt much better after this session.\r\n\r\nDuring work, wore my orthotics. Throughout work, the heel felt good enough. It was mildly sore after sitting for a period of time, but loosened up after walking a bit. Overall, the orthotics seem to be helping.\r\n\r\nDuring evening run, I pushed the pace a little more above mellow pace. I could still hold a conversation, probably. On the uphill, the heel felt fine. On the downhill, I again pushed the pace within the first mile and at times during the last. Overall, the faster pace going downhill actually felt pretty good and maybe better than the slower pace downhill. I'm wondering if that may be because when slowing the pace going downhill, I'm using my feet to slow myself a bit more (ie. more pressure...).\r\n\r\n- Taped heel\r\n- Orthotics\r\n- Little faster than mellow",
+  "similar_activities": {
+    "effort_count": 5,
+    "average_speed": 2.8404337180832457,
+    "min_average_speed": 2.752044293015332,
+    "mid_average_speed": 2.902375838286067,
+    "max_average_speed": 3.0700802265219442,
+    "pr_rank": 1,
+    "frequency_milestone": 5,
+    "trend": {
+      "speeds": [
+        2.854810238305384,
+        2.8024854863211255,
+        2.7945084760521293,
+        2.7882503072970755,
+        2.8368193979413174
+      ],
+      "current_activity_index": 4,
+      "min_speed": 2.752044293015332,
+      "mid_speed": 2.902375838286067,
+      "max_speed": 3.0700802265219442,
+      "direction": 1
+    },
+    "resource_state": 2
+  },
   "available_zones": [
-    "heartrate"
+    "heartrate",
+    "pace",
+    "power"
   ]
 }
