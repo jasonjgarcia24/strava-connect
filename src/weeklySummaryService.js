@@ -363,7 +363,7 @@ Please provide a well-organized summary in 3-4 paragraphs that would be useful f
   }
 
   /**
-   * Check if current week already has a summary and generate if needed
+   * Generate current week summary automatically (always creates new summary)
    */
   async generateCurrentWeekSummaryIfNeeded(activities) {
     // Check if it's Wednesday or later
@@ -378,33 +378,19 @@ Please provide a well-organized summary in 3-4 paragraphs that would be useful f
     const weekNumber = this.getWeekNumber(startOfWeek);
     const year = startOfWeek.getFullYear();
 
-    // Check if summary already exists
-    const SheetsService = require('./sheetsService');
-    const sheetsService = new SheetsService();
-    const existingSummaries = await sheetsService.getExistingWeeklySummaries();
-    
-    const weekKey = `${weekNumber}-${year}`;
-    const alreadyExists = existingSummaries.some(summary => {
-      const existingWeekKey = `${summary['Week Number']}-${summary['Year']}`;
-      return existingWeekKey === weekKey;
-    });
-
-    if (alreadyExists) {
-      console.log(`📊 Weekly summary for Week ${weekNumber} ${year} already exists - regenerating with latest data`);
-    }
-
-    // Generate current week summary
+    // Always generate current week summary
     console.log(`📝 Auto-generating weekly summary for Week ${weekNumber} ${year}...`);
     try {
       const summary = await this.getCurrentWeekSummary(activities);
       
       if (summary.activitiesWithNotes > 0) {
-        // Save to spreadsheet (always append)
+        // Always save to spreadsheet
+        const SheetsService = require('./sheetsService');
+        const sheetsService = new SheetsService();
         await sheetsService.createWeeklySummaryHeaders();
         await sheetsService.appendWeeklySummary(summary);
         
-        const action = alreadyExists ? 'Regenerated' : 'Generated';
-        console.log(`✅ ${action} weekly summary for Week ${weekNumber} ${year} (${summary.activitiesWithNotes} activities with notes)`);
+        console.log(`✅ Generated weekly summary for Week ${weekNumber} ${year} (${summary.activitiesWithNotes} activities with notes)`);
         return summary;
       } else {
         console.log(`⏭️  Skipping Week ${weekNumber} ${year} auto-summary - no activities with notes yet`);
