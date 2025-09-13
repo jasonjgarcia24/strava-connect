@@ -73,6 +73,28 @@ class StravaConnectApp {
       await this.sheetsService.appendActivities(enrichedActivities);
       
       console.log('Sync completed successfully!');
+
+      // Auto-generate weekly summary if it's Wednesday or later
+      console.log('\n📅 Checking if weekly summary should be auto-generated...');
+      try {
+        // Get all activities for weekly summary analysis
+        const allActivities = await this.sheetsService.getAllActivities();
+        
+        if (allActivities.length > 0) {
+          // Add start_date_local for date filtering from sheet data
+          const activitiesWithDates = allActivities.map(activity => ({
+            ...activity,
+            start_date_local: new Date(activity.Date).toISOString()
+          }));
+          
+          await this.weeklySummaryService.generateCurrentWeekSummaryIfNeeded(activitiesWithDates);
+        } else {
+          console.log('📊 No activities found for weekly summary analysis');
+        }
+      } catch (error) {
+        console.warn('⚠️  Weekly summary auto-generation failed:', error.message);
+        // Don't fail the entire sync if weekly summary fails
+      }
       
     } catch (error) {
       console.error('Error during sync:', error.message);
@@ -90,6 +112,12 @@ class StravaConnectApp {
       return;
     }
     
+    if (command === 'backfill') {
+      const weeksBack = args[1] ? parseInt(args[1]) : 12; // Default to 12 weeks back
+      await this.backfillWeeklySummaries(weeksBack);
+      return;
+    }
+    
     // Default behavior - sync activities
     const activityCount = args[0] ? parseInt(args[0]) : 30;
     
@@ -100,11 +128,14 @@ class StravaConnectApp {
       console.error('  node src/index.js [activity_count]     - Sync activities (default: 30)');
       console.error('  node src/index.js summary [date]       - Generate weekly summary');
       console.error('  node src/index.js weekly [date]        - Generate weekly summary');
+      console.error('  node src/index.js backfill [weeks]     - Generate missing weekly summaries');
       console.error('');
       console.error('Examples:');
       console.error('  node src/index.js 50                   - Sync 50 activities');
       console.error('  node src/index.js summary              - Current week summary');
       console.error('  node src/index.js summary 2024-01-15   - Summary for week containing Jan 15');
+      console.error('  node src/index.js backfill             - Check last 12 weeks for missing summaries');
+      console.error('  node src/index.js backfill 20          - Check last 20 weeks for missing summaries');
       process.exit(1);
     }
 
@@ -188,6 +219,55 @@ class StravaConnectApp {
         console.log('   }');
       }
       
+      throw error;
+    }
+  }
+
+  async backfillWeeklySummaries(weeksBack = 12) {
+    try {
+      console.log(`🔍 Checking for missing weekly summaries (${weeksBack} weeks back)...`);
+      
+      // Get activities from Google Sheets (as fallback) or recent activities
+      let activities = await this.sheetsService.getAllActivities();
+      
+      if (activities.length === 0) {
+        console.log('No activities found in Google Sheets, fetching recent activities...');
+        const recentActivities = await this.stravaService.getActivities(1, 200);
+        
+        // Convert to the same format as sheet data
+        activities = recentActivities.map(activity => ({
+          'Name': activity.name,
+          'Date': new Date(activity.start_date_local).toLocaleDateString(),
+          'Type': activity.sport_type,
+          'Distance (mi)': activity.distance ? Math.round(activity.distance / 1609.34 * 100) / 100 : 0,
+          'Moving Time (min)': Math.round(activity.moving_time / 60),
+          'Private Notes': activity.private_note || '',
+          'Perceived Exertion': activity.perceived_exertion || null,
+          'Avg Heart Rate': activity.average_heartrate || null,
+          'Location Name': '',
+          'start_date_local': activity.start_date_local // Keep original for date filtering
+        }));
+      } else {
+        // Add start_date_local for date filtering from sheet data
+        activities = activities.map(activity => ({
+          ...activity,
+          start_date_local: new Date(activity.Date).toISOString()
+        }));
+      }
+
+      const generatedSummaries = await this.weeklySummaryService.backfillMissingSummaries(activities, weeksBack);
+      
+      if (generatedSummaries.length > 0) {
+        console.log(`\n🎉 Successfully generated ${generatedSummaries.length} missing weekly summaries!`);
+        generatedSummaries.forEach(summary => {
+          console.log(`  ✅ Week ${summary.weekNumber} ${summary.year}: ${summary.activitiesWithNotes} activities with notes`);
+        });
+      } else {
+        console.log('\n✅ No missing weekly summaries found - all up to date!');
+      }
+
+    } catch (error) {
+      console.error('Error during backfill:', error.message);
       throw error;
     }
   }

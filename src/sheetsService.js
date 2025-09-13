@@ -57,6 +57,10 @@ class SheetsService {
           return await this.#createWeeklySummaryHeaders();
         case '#appendWeeklySummary':
           return await this.#appendWeeklySummary(...args);
+        case '#updateWeeklySummary':
+          return await this.#updateWeeklySummary(...args);
+        case '#getExistingWeeklySummaries':
+          return await this.#getExistingWeeklySummaries();
       }
     }
     finally {
@@ -91,6 +95,14 @@ class SheetsService {
 
   async appendWeeklySummary(summaryData) {
     return await this.safeAsyncCall('#appendWeeklySummary', [summaryData]);
+  }
+
+  async updateWeeklySummary(summaryData) {
+    return await this.safeAsyncCall('#updateWeeklySummary', [summaryData]);
+  }
+
+  async getExistingWeeklySummaries() {
+    return await this.safeAsyncCall('#getExistingWeeklySummaries');
   }
 
   async #createHeaderRow() {
@@ -377,6 +389,103 @@ class SheetsService {
       console.log(`Added week ${summaryData.weekNumber} summary to the spreadsheet`);
     } catch (error) {
       console.error('Error appending weekly summary:', error.message);
+      throw error;
+    }
+  }
+
+  async #getExistingWeeklySummaries() {
+    try {
+      const response = await this.#sheets.spreadsheets.values.get({
+        spreadsheetId: this.#encryption.decrypt(this.sheetsId),
+        range: 'Week Summary!A:J'
+      });
+
+      if (!response.data.values || response.data.values.length <= 1) {
+        return []; // No data or only headers
+      }
+
+      const headers = response.data.values[0];
+      const rows = response.data.values.slice(1);
+
+      // Convert rows to objects using headers
+      return rows.map(row => {
+        const summary = {};
+        headers.forEach((header, index) => {
+          summary[header] = row[index] || '';
+        });
+        return summary;
+      });
+
+    } catch (error) {
+      console.error('Error getting existing weekly summaries:', error.message);
+      return [];
+    }
+  }
+
+  async #updateWeeklySummary(summaryData) {
+    try {
+      // Get existing summaries to find the row to update
+      const response = await this.#sheets.spreadsheets.values.get({
+        spreadsheetId: this.#encryption.decrypt(this.sheetsId),
+        range: 'Week Summary!A:J'
+      });
+
+      if (!response.data.values || response.data.values.length <= 1) {
+        // No existing data, just append
+        return await this.#appendWeeklySummary(summaryData);
+      }
+
+      const rows = response.data.values;
+      let updateRowIndex = -1;
+
+      // Find the row that matches this week/year
+      for (let i = 1; i < rows.length; i++) {
+        const row = rows[i];
+        if (row[0] === summaryData.weekNumber.toString() && row[1] === summaryData.year.toString()) {
+          updateRowIndex = i + 1; // +1 because sheets are 1-indexed
+          break;
+        }
+      }
+
+      const newRow = [
+        summaryData.weekNumber,
+        summaryData.year,
+        summaryData.weekStartDate,
+        summaryData.weekEndDate,
+        summaryData.weekRange,
+        summaryData.totalActivities,
+        summaryData.activitiesWithNotes,
+        summaryData.summary,
+        summaryData.activityIds.join(', '),
+        new Date().toISOString()
+      ];
+
+      if (updateRowIndex > 0) {
+        // Update existing row
+        await this.#sheets.spreadsheets.values.update({
+          spreadsheetId: this.#encryption.decrypt(this.sheetsId),
+          range: `Week Summary!A${updateRowIndex}:J${updateRowIndex}`,
+          valueInputOption: 'RAW',
+          resource: {
+            values: [newRow]
+          }
+        });
+        console.log(`Updated existing week ${summaryData.weekNumber} summary in the spreadsheet`);
+      } else {
+        // Append new row
+        await this.#sheets.spreadsheets.values.append({
+          spreadsheetId: this.#encryption.decrypt(this.sheetsId),
+          range: 'Week Summary!A:J',
+          valueInputOption: 'RAW',
+          resource: {
+            values: [newRow]
+          }
+        });
+        console.log(`Added new week ${summaryData.weekNumber} summary to the spreadsheet`);
+      }
+
+    } catch (error) {
+      console.error('Error updating weekly summary:', error.message);
       throw error;
     }
   }
