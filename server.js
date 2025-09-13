@@ -142,6 +142,88 @@ app.get('/', (req, res) => {
             }
             .stat-label { font-size: 14px; color: #666; }
             .loading { text-align: center; padding: 40px; color: #666; }
+            .week-group {
+                margin-bottom: 30px;
+                border: 1px solid #eee;
+                border-radius: 8px;
+                overflow: hidden;
+            }
+            .week-header {
+                background: #f8f9ff;
+                padding: 15px 20px;
+                border-bottom: 1px solid #eee;
+                font-weight: 600;
+                color: #667eea;
+            }
+            .week-summary {
+                background: #f0f4ff;
+                padding: 10px 20px;
+                font-size: 14px;
+                color: #555;
+                display: flex;
+                gap: 20px;
+                flex-wrap: wrap;
+            }
+            .daily-table {
+                width: 100%;
+                border-collapse: collapse;
+            }
+            .daily-table th,
+            .daily-table td {
+                padding: 10px;
+                text-align: left;
+                border-bottom: 1px solid #f0f0f0;
+                font-size: 13px;
+            }
+            .daily-table th {
+                background: #fafafa;
+                font-weight: 600;
+                color: #333;
+            }
+            .daily-table tr:hover {
+                background: #f8f9ff;
+            }
+            .no-activity-day {
+                color: #999;
+                font-style: italic;
+                text-align: center;
+            }
+            .rpe-tooltip {
+                position: relative;
+                cursor: help;
+                border-bottom: 1px dotted #667eea;
+                color: #667eea;
+            }
+            .rpe-tooltip:hover::after {
+                content: "Rate of Perceived Effort - subjective measure of exercise intensity (1-10 scale)";
+                position: absolute;
+                bottom: 100%;
+                left: 50%;
+                transform: translateX(-50%);
+                background: #333;
+                color: white;
+                padding: 8px 12px;
+                border-radius: 4px;
+                font-size: 12px;
+                white-space: nowrap;
+                z-index: 1000;
+            }
+            .equipment-info {
+                max-width: 150px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .notes-cell {
+                max-width: 200px;
+                overflow: hidden;
+                text-overflow: ellipsis;
+                white-space: nowrap;
+            }
+            .notes-cell:hover {
+                white-space: normal;
+                overflow: visible;
+            }
         </style>
     </head>
     <body>
@@ -166,6 +248,7 @@ app.get('/', (req, res) => {
             <!-- Navigation -->
             <div class="nav-tabs">
                 <button class="nav-tab active" onclick="showTab('overview')">📊 Overview</button>
+                <button class="nav-tab" onclick="showTab('daily')">📆 Daily</button>
                 <button class="nav-tab" onclick="showTab('activities')">🏃 Activities</button>
                 <button class="nav-tab" onclick="showTab('weekly')">📅 Weekly</button>
                 <button class="nav-tab" onclick="showTab('monthly')">📈 Monthly</button>
@@ -182,6 +265,24 @@ app.get('/', (req, res) => {
                     <h3>📈 Activity Trends (Last 30 Days)</h3>
                     <div class="chart-container">
                         <canvas id="trendsChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Daily Tab -->
+            <div id="daily" class="tab-content">
+                <div class="card">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3>📆 Daily Training Log</h3>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <label for="monthSelector" style="font-weight: 500;">Month:</label>
+                            <select id="monthSelector" onchange="loadDailyData()" style="padding: 8px; border: 2px solid #ddd; border-radius: 4px; background: white;">
+                                <!-- Options populated by JavaScript -->
+                            </select>
+                        </div>
+                    </div>
+                    <div id="dailyContent">
+                        <div class="loading">Loading daily training data...</div>
                     </div>
                 </div>
             </div>
@@ -279,6 +380,9 @@ app.get('/', (req, res) => {
                 switch(tabName) {
                     case 'overview':
                         loadOverview();
+                        break;
+                    case 'daily':
+                        initializeDailyTab();
                         break;
                     case 'activities':
                         loadActivities();
@@ -409,6 +513,106 @@ app.get('/', (req, res) => {
                 } catch (error) {
                     console.error('Failed to load monthly data');
                 }
+            }
+
+            // Initialize Daily tab
+            async function initializeDailyTab() {
+                // Populate month selector
+                const monthSelector = document.getElementById('monthSelector');
+                const currentDate = new Date();
+                const months = [];
+                
+                // Generate last 12 months
+                for (let i = 0; i < 12; i++) {
+                    const date = new Date(currentDate.getFullYear(), currentDate.getMonth() - i, 1);
+                    months.push({
+                        value: date.getFullYear() + '-' + String(date.getMonth() + 1).padStart(2, '0'),
+                        label: date.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })
+                    });
+                }
+                
+                const currentMonthValue = currentDate.getFullYear() + '-' + String(currentDate.getMonth() + 1).padStart(2, '0');
+                monthSelector.innerHTML = months.map(month => 
+                    '<option value="' + month.value + '"' + (month.value === currentMonthValue ? ' selected' : '') + '>' + month.label + '</option>'
+                ).join('');
+                
+                loadDailyData();
+            }
+
+            // Load daily data for selected month
+            async function loadDailyData() {
+                const monthSelector = document.getElementById('monthSelector');
+                const selectedMonth = monthSelector.value;
+                
+                try {
+                    const response = await fetch('/api/daily?month=' + selectedMonth);
+                    const data = await response.json();
+                    
+                    displayDailyData(data);
+                } catch (error) {
+                    document.getElementById('dailyContent').innerHTML = '<div class="error">Failed to load daily data</div>';
+                }
+            }
+
+            // Display daily data grouped by weeks
+            function displayDailyData(data) {
+                const dailyContent = document.getElementById('dailyContent');
+                
+                if (!data.weeks || data.weeks.length === 0) {
+                    dailyContent.innerHTML = '<p>No activities found for this month.</p>';
+                    return;
+                }
+                
+                let html = '';
+                
+                data.weeks.forEach(week => {
+                    html += '<div class="week-group">' +
+                        '<div class="week-header">Week of ' + week.weekStart + ' - ' + week.weekEnd + '</div>' +
+                        '<div class="week-summary">' +
+                            '<span><strong>Total Distance:</strong> ' + week.summary.totalDistance + ' mi</span>' +
+                            '<span><strong>Total Time:</strong> ' + week.summary.totalTime + '</span>' +
+                            '<span><strong>Activities:</strong> ' + week.summary.totalActivities + '</span>' +
+                            '<span><strong>Elevation:</strong> ' + week.summary.totalElevation + ' ft</span>' +
+                        '</div>' +
+                        '<table class="daily-table">' +
+                            '<thead>' +
+                                '<tr>' +
+                                    '<th>Date</th>' +
+                                    '<th>Activity</th>' +
+                                    '<th>Distance (mi)</th>' +
+                                    '<th>Duration</th>' +
+                                    '<th>Elevation (ft)</th>' +
+                                    '<th>Equipment</th>' +
+                                    '<th><span class="rpe-tooltip">RPE</span></th>' +
+                                    '<th>Location</th>' +
+                                    '<th>Notes</th>' +
+                                '</tr>' +
+                            '</thead>' +
+                            '<tbody>' +
+                                week.days.map(day => {
+                                    if (day.activities.length === 0) {
+                                        return '<tr><td>' + day.date + '</td><td class="no-activity-day" colspan="8">Rest Day</td></tr>';
+                                    }
+                                    return day.activities.map(activity => 
+                                        '<tr>' +
+                                            '<td>' + day.date + '</td>' +
+                                            '<td>' + activity.name + '</td>' +
+                                            '<td>' + activity.distance + '</td>' +
+                                            '<td>' + activity.duration + '</td>' +
+                                            '<td>' + activity.elevation + '</td>' +
+                                            '<td class="equipment-info" title="' + activity.equipmentFull + '">' + activity.equipment + '</td>' +
+                                            '<td>' + activity.rpe + '</td>' +
+                                            '<td>' + activity.location + '</td>' +
+                                            '<td class="notes-cell" title="' + activity.notes + '">' + activity.notes + '</td>' +
+                                        '</tr>'
+                                    ).join('');
+                                }).join('') +
+                            '</tbody>' +
+                        '</table>' +
+                    '</div>';
+                });
+                
+                dailyContent.innerHTML = html;
             }
 
             // Load summaries
@@ -604,26 +808,52 @@ app.get('/api/weekly', async (req, res) => {
     const stravaApp = new StravaConnectApp();
     const activities = await stravaApp.sheetsService.getAllActivities();
     
-    // Calculate weekly statistics
+    console.log(`Weekly API: Found ${activities.length} activities`);
+    if (activities.length > 0) {
+      console.log('Sample activity:', {
+        Date: activities[0].Date,
+        Distance: activities[0]['Distance (mi)'],
+        Name: activities[0].Name
+      });
+    }
+    
+    // Calculate weekly statistics with better error handling
     const now = new Date();
     const thisWeekStart = new Date(now);
-    thisWeekStart.setDate(now.getDate() - now.getDay() + 1); // Monday
+    const dayOfWeek = now.getDay();
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Handle Sunday = 0
+    thisWeekStart.setDate(now.getDate() - daysFromMonday);
     thisWeekStart.setHours(0, 0, 0, 0);
     
     const lastWeekStart = new Date(thisWeekStart);
     lastWeekStart.setDate(thisWeekStart.getDate() - 7);
     const lastWeekEnd = new Date(thisWeekStart);
     lastWeekEnd.setDate(thisWeekStart.getDate() - 1);
+    lastWeekEnd.setHours(23, 59, 59, 999);
+    
+    console.log('Date ranges:', {
+      thisWeekStart: thisWeekStart.toISOString(),
+      lastWeekStart: lastWeekStart.toISOString(),
+      lastWeekEnd: lastWeekEnd.toISOString()
+    });
     
     const thisWeekActivities = activities.filter(activity => {
+      if (!activity.Date) return false;
       const date = new Date(activity.Date);
-      return date >= thisWeekStart;
+      const isValid = !isNaN(date.getTime());
+      const inRange = date >= thisWeekStart;
+      return isValid && inRange;
     });
     
     const lastWeekActivities = activities.filter(activity => {
+      if (!activity.Date) return false;
       const date = new Date(activity.Date);
-      return date >= lastWeekStart && date <= lastWeekEnd;
+      const isValid = !isNaN(date.getTime());
+      const inRange = date >= lastWeekStart && date <= lastWeekEnd;
+      return isValid && inRange;
     });
+    
+    console.log(`This week: ${thisWeekActivities.length}, Last week: ${lastWeekActivities.length}`);
     
     // Prepare weekly chart data (last 8 weeks)
     const weeks = [];
@@ -631,7 +861,9 @@ app.get('/api/weekly', async (req, res) => {
     
     for (let i = 7; i >= 0; i--) {
       const weekStart = new Date(now);
-      weekStart.setDate(now.getDate() - (i * 7) - now.getDay() + 1);
+      const weekDayOfWeek = now.getDay();
+      const weekDaysFromMonday = weekDayOfWeek === 0 ? 6 : weekDayOfWeek - 1;
+      weekStart.setDate(now.getDate() - weekDaysFromMonday - (i * 7));
       weekStart.setHours(0, 0, 0, 0);
       
       const weekEnd = new Date(weekStart);
@@ -639,33 +871,55 @@ app.get('/api/weekly', async (req, res) => {
       weekEnd.setHours(23, 59, 59, 999);
       
       const weekActivities = activities.filter(activity => {
+        if (!activity.Date) return false;
         const date = new Date(activity.Date);
-        return date >= weekStart && date <= weekEnd;
+        const isValid = !isNaN(date.getTime());
+        const inRange = date >= weekStart && date <= weekEnd;
+        return isValid && inRange;
       });
       
       const weekDistance = weekActivities.reduce((sum, activity) => {
-        return sum + (parseFloat(activity['Distance (mi)']) || 0);
+        const distance = parseFloat(activity['Distance (mi)']);
+        return sum + (isNaN(distance) ? 0 : distance);
       }, 0);
       
-      weeks.push(`Week ${weekStart.getMonth() + 1}/${weekStart.getDate()}`);
-      distances.push(weekDistance.toFixed(1));
+      weeks.push(`${weekStart.getMonth() + 1}/${weekStart.getDate()}`);
+      distances.push(parseFloat(weekDistance.toFixed(1)));
     }
     
-    res.json({
+    // Calculate distances with better error handling
+    const thisWeekDistance = thisWeekActivities.reduce((sum, activity) => {
+      const distance = parseFloat(activity['Distance (mi)']);
+      return sum + (isNaN(distance) ? 0 : distance);
+    }, 0);
+    
+    const lastWeekDistance = lastWeekActivities.reduce((sum, activity) => {
+      const distance = parseFloat(activity['Distance (mi)']);
+      return sum + (isNaN(distance) ? 0 : distance);
+    }, 0);
+    
+    const result = {
       thisWeek: {
         activities: thisWeekActivities.length,
-        distance: thisWeekActivities.reduce((sum, a) => sum + (parseFloat(a['Distance (mi)']) || 0), 0).toFixed(1)
+        distance: thisWeekDistance.toFixed(1)
       },
       lastWeek: {
         activities: lastWeekActivities.length,
-        distance: lastWeekActivities.reduce((sum, a) => sum + (parseFloat(a['Distance (mi)']) || 0), 0).toFixed(1)
+        distance: lastWeekDistance.toFixed(1)
       },
       weeks,
       distances
-    });
+    };
+    
+    console.log('Weekly API result:', result);
+    res.json(result);
+    
   } catch (error) {
-    console.error('Weekly API error:', error);
-    res.status(500).json({ error: 'Failed to load weekly data' });
+    console.error('Weekly API error details:', error);
+    res.status(500).json({ 
+      error: 'Failed to load weekly data',
+      details: error.message 
+    });
   }
 });
 
@@ -702,6 +956,145 @@ app.get('/api/monthly', async (req, res) => {
     res.status(500).json({ error: 'Failed to load monthly data' });
   }
 });
+
+app.get('/api/daily', async (req, res) => {
+  try {
+    const { month } = req.query; // Format: YYYY-MM
+    const stravaApp = new StravaConnectApp();
+    const activities = await stravaApp.sheetsService.getAllActivities();
+    
+    console.log(`Daily API: Requested month ${month}, found ${activities.length} total activities`);
+    
+    // Parse month
+    const [year, monthNum] = month.split('-').map(Number);
+    const monthStart = new Date(year, monthNum - 1, 1);
+    const monthEnd = new Date(year, monthNum, 0); // Last day of month
+    monthEnd.setHours(23, 59, 59, 999);
+    
+    // Filter activities for the month
+    const monthActivities = activities.filter(activity => {
+      if (!activity.Date) return false;
+      const date = new Date(activity.Date);
+      return date >= monthStart && date <= monthEnd;
+    }).sort((a, b) => new Date(a.Date) - new Date(b.Date));
+    
+    console.log(`Daily API: Found ${monthActivities.length} activities for ${month}`);
+    
+    // Group activities by weeks (Monday start)
+    const weeks = [];
+    let currentWeekStart = new Date(monthStart);
+    
+    // Adjust to start on Monday
+    const dayOfWeek = currentWeekStart.getDay();
+    const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+    currentWeekStart.setDate(currentWeekStart.getDate() - daysFromMonday);
+    
+    while (currentWeekStart <= monthEnd) {
+      const weekEnd = new Date(currentWeekStart);
+      weekEnd.setDate(currentWeekStart.getDate() + 6);
+      weekEnd.setHours(23, 59, 59, 999);
+      
+      // Get activities for this week
+      const weekActivities = monthActivities.filter(activity => {
+        const date = new Date(activity.Date);
+        return date >= currentWeekStart && date <= weekEnd;
+      });
+      
+      // Create days array for the week
+      const days = [];
+      for (let d = 0; d < 7; d++) {
+        const dayDate = new Date(currentWeekStart);
+        dayDate.setDate(currentWeekStart.getDate() + d);
+        
+        // Skip days outside the month
+        if (dayDate < monthStart || dayDate > monthEnd) {
+          continue;
+        }
+        
+        const dayActivities = weekActivities.filter(activity => {
+          const actDate = new Date(activity.Date);
+          return actDate.toDateString() === dayDate.toDateString();
+        }).map(activity => ({
+          name: activity.Name || 'Unknown Activity',
+          distance: (parseFloat(activity['Distance (mi)']) || 0).toFixed(1),
+          duration: activity['Moving Time (min)'] ? `${activity['Moving Time (min)']} min` : 'N/A',
+          elevation: (parseFloat(activity['Elevation Gain (ft)']) || 0).toFixed(0),
+          equipment: formatEquipment(activity),
+          equipmentFull: getFullEquipmentInfo(activity),
+          rpe: activity['Perceived Exertion'] || 'N/A',
+          location: activity['Location Name'] || activity['Detected City'] || 'Unknown',
+          notes: activity['Private Notes'] || activity['Description'] || 'No notes'
+        }));
+        
+        days.push({
+          date: dayDate.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' }),
+          activities: dayActivities
+        });
+      }
+      
+      // Calculate week summary
+      const weekSummary = {
+        totalDistance: weekActivities.reduce((sum, a) => sum + (parseFloat(a['Distance (mi)']) || 0), 0).toFixed(1),
+        totalTime: formatTotalTime(weekActivities.reduce((sum, a) => sum + (parseFloat(a['Moving Time (min)']) || 0), 0)),
+        totalActivities: weekActivities.length,
+        totalElevation: weekActivities.reduce((sum, a) => sum + (parseFloat(a['Elevation Gain (ft)']) || 0), 0).toFixed(0)
+      };
+      
+      // Only add week if it has days in the current month
+      if (days.length > 0) {
+        weeks.push({
+          weekStart: currentWeekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          weekEnd: weekEnd > monthEnd ? monthEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : weekEnd.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
+          days: days,
+          summary: weekSummary
+        });
+      }
+      
+      // Move to next week
+      currentWeekStart.setDate(currentWeekStart.getDate() + 7);
+    }
+    
+    res.json({ weeks });
+    
+  } catch (error) {
+    console.error('Daily API error:', error);
+    res.status(500).json({ error: 'Failed to load daily data' });
+  }
+});
+
+// Helper functions for daily data
+function formatEquipment(activity) {
+  const brand = activity['Equipment Brand'];
+  const model = activity['Equipment Model'];
+  const nickname = activity['Equipment Nickname'];
+  
+  if (nickname) return nickname;
+  if (brand && model) return `${brand} ${model}`.substring(0, 20);
+  if (brand) return brand.substring(0, 15);
+  return 'N/A';
+}
+
+function getFullEquipmentInfo(activity) {
+  const brand = activity['Equipment Brand'];
+  const model = activity['Equipment Model'];
+  const nickname = activity['Equipment Nickname'];
+  const name = activity['Equipment Name'];
+  
+  const parts = [nickname, name, brand, model].filter(Boolean);
+  return parts.join(' - ') || 'No equipment info';
+}
+
+function formatTotalTime(minutes) {
+  if (!minutes || minutes === 0) return '0 min';
+  
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.round(minutes % 60);
+  
+  if (hours > 0) {
+    return `${hours}h ${mins}m`;
+  }
+  return `${mins} min`;
+}
 
 app.get('/api/summaries', async (req, res) => {
   try {
