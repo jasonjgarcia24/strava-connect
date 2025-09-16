@@ -1,17 +1,1320 @@
 require('dotenv').config();
 const express = require('express');
 const path = require('path');
+const session = require('express-session');
+const passport = require('passport');
+const SequelizeStore = require('connect-session-sequelize')(session.Store);
 const StravaConnectApp = require('./src/index');
+const PassportConfig = require('./src/passport');
+const AuthService = require('./src/authService');
 
 const app = express();
 const port = process.env.PORT || 3000;
 
+// Initialize authentication
+const passportConfig = new PassportConfig();
+const authService = new AuthService();
+
+// Session store
+const sessionStore = new SequelizeStore({
+  db: authService.sequelize,
+});
+
 // Middleware
 app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 app.use(express.static('public'));
 
-// Main dashboard
+// Session configuration
+app.use(session({
+  secret: process.env.SESSION_SECRET || 'strava-dashboard-secret-key-change-in-production',
+  store: sessionStore,
+  resave: false,
+  saveUninitialized: false,
+  cookie: {
+    secure: false, // Set to true in production with HTTPS
+    httpOnly: true,
+    maxAge: 24 * 60 * 60 * 1000 // 24 hours
+  }
+}));
+
+// Initialize Passport
+app.use(passport.initialize());
+app.use(passport.session());
+
+// Sync session store
+sessionStore.sync();
+
+// Authentication middleware
+function requireAuth(req, res, next) {
+  if (!authInitialized) {
+    return res.status(503).send('Authentication system is still initializing. Please try again in a moment.');
+  }
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  res.redirect('/login');
+}
+
+// Athlete access middleware - ensures user has access to the specified athlete's data
+async function requireAthleteAccess(req, res, next) {
+  try {
+    const athleteId = req.params.athleteId || req.query.athleteId || req.body.athleteId;
+
+    if (!athleteId) {
+      return res.status(400).json({ error: 'Athlete ID is required' });
+    }
+
+    // Athletes can always access their own data
+    if (req.user.role === 'athlete') {
+      // Find the athlete record for this user
+      const athleteAccess = await authService.AthleteAccess.findOne({
+        where: {
+          userId: req.user.id,
+          athleteId: athleteId,
+          isApproved: true
+        }
+      });
+
+      if (!athleteAccess) {
+        return res.status(403).json({ error: 'Access denied to this athlete data' });
+      }
+
+      req.athleteId = athleteId;
+      return next();
+    }
+
+    // For coaches, verify they have approved access to this athlete
+    const access = await authService.getUserAthleteAccess(req.user.id, athleteId);
+    if (!access) {
+      return res.status(403).json({ error: 'Access denied to this athlete data' });
+    }
+
+    req.athleteId = athleteId;
+    req.athleteAccess = access;
+    next();
+  } catch (error) {
+    console.error('Athlete access middleware error:', error);
+    res.status(500).json({ error: 'Failed to verify athlete access' });
+  }
+}
+
+// Initialize authentication on startup - wait for completion before starting routes
+let authInitialized = false;
+
+async function initializeAuth() {
+  try {
+    await passportConfig.initialize();
+    authInitialized = true;
+    console.log('✅ Authentication system initialized');
+  } catch (error) {
+    console.error('❌ Failed to initialize authentication:', error);
+    process.exit(1);
+  }
+}
+
+// Initialize authentication before setting up routes
+initializeAuth();
+
+// Authentication routes
+app.get('/login', (req, res) => {
+  if (req.isAuthenticated()) {
+    return res.redirect('/');
+  }
+  
+  const error = req.query.error || '';
+  const message = req.query.message || '';
+  
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🏃‍♂️ Login - Strava Training Dashboard</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body { 
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+            }
+            .login-container {
+                background: white;
+                padding: 2rem;
+                border-radius: 15px;
+                box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+                width: 100%;
+                max-width: 400px;
+                text-align: center;
+            }
+            .logo {
+                font-size: 3rem;
+                margin-bottom: 1rem;
+            }
+            h1 {
+                color: #333;
+                margin-bottom: 2rem;
+                font-size: 1.5rem;
+            }
+            .auth-method {
+                margin-bottom: 1rem;
+                padding: 1rem;
+                border: 2px solid #f0f0f0;
+                border-radius: 10px;
+                transition: all 0.3s ease;
+            }
+            .auth-method:hover {
+                border-color: #667eea;
+                background: #f8f9ff;
+            }
+            .auth-form {
+                display: none;
+            }
+            .auth-form.active {
+                display: block;
+            }
+            input[type="email"], input[type="password"] {
+                width: 100%;
+                padding: 0.8rem;
+                margin: 0.5rem 0;
+                border: 2px solid #e1e5e9;
+                border-radius: 8px;
+                font-size: 1rem;
+            }
+            .btn {
+                width: 100%;
+                padding: 0.8rem;
+                background: #667eea;
+                color: white;
+                border: none;
+                border-radius: 8px;
+                font-size: 1rem;
+                cursor: pointer;
+                transition: background 0.3s ease;
+                text-decoration: none;
+                display: inline-block;
+                margin: 0.5rem 0;
+            }
+            .btn:hover {
+                background: #5a6fd8;
+            }
+            .btn-oauth {
+                background: #ff6b35;
+            }
+            .btn-oauth:hover {
+                background: #e55a2b;
+            }
+            .btn-google {
+                background: #4285f4;
+            }
+            .btn-google:hover {
+                background: #3367d6;
+            }
+            .btn-strava {
+                background: #fc4c02;
+            }
+            .btn-strava:hover {
+                background: #e0430c;
+            }
+            .toggle-link {
+                color: #667eea;
+                cursor: pointer;
+                text-decoration: underline;
+                margin-top: 1rem;
+                display: block;
+            }
+            .error {
+                background: #ffe6e6;
+                color: #d00;
+                padding: 0.8rem;
+                border-radius: 8px;
+                margin-bottom: 1rem;
+            }
+            .success {
+                background: #e6ffe6;
+                color: #0a5d00;
+                padding: 0.8rem;
+                border-radius: 8px;
+                margin-bottom: 1rem;
+            }
+            .divider {
+                margin: 1.5rem 0;
+                text-align: center;
+                color: #666;
+                position: relative;
+            }
+            .divider::before {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 0;
+                right: 0;
+                height: 1px;
+                background: #e1e5e9;
+            }
+            .divider span {
+                background: white;
+                padding: 0 1rem;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="login-container">
+            <div class="logo">🏃‍♂️</div>
+            <h1>Training Dashboard Login</h1>
+            
+            ${error ? `<div class="error">${error}</div>` : ''}
+            ${message ? `<div class="success">${message}</div>` : ''}
+            
+            <!-- OAuth Login Options -->
+            <div class="auth-method">
+                <h3>Quick Login</h3>
+                <a href="/auth/google" class="btn btn-google">📧 Login with Google</a>
+                <a href="/auth/strava" class="btn btn-strava">🚴‍♂️ Login with Strava</a>
+            </div>
+            
+            <div class="divider"><span>or</span></div>
+            
+            <!-- Traditional Login -->
+            <div class="auth-method">
+                <h3>Email & Password</h3>
+                <form action="/auth/local" method="POST">
+                    <input type="email" name="email" placeholder="Email Address" required>
+                    <input type="password" name="password" placeholder="Password" required>
+                    <button type="submit" class="btn">🔐 Login</button>
+                </form>
+                <span class="toggle-link" onclick="toggleRegister()">Need an account? Register here</span>
+            </div>
+            
+            <!-- Registration Form -->
+            <div id="registerForm" class="auth-method" style="display: none;">
+                <h3>Create Account</h3>
+                <form action="/auth/register" method="POST">
+                    <input type="text" name="name" placeholder="Full Name" required>
+                    <input type="email" name="email" placeholder="Email Address" required>
+                    <input type="password" name="password" placeholder="Password" required>
+                    <button type="submit" class="btn">📝 Register</button>
+                </form>
+                <span class="toggle-link" onclick="toggleRegister()">Already have an account? Login here</span>
+            </div>
+            
+            <div style="margin-top: 2rem; font-size: 0.9rem; color: #666;">
+                <p>🛡️ Secure access to training data</p>
+                <p>Coach accounts require athlete approval</p>
+            </div>
+        </div>
+        
+        <script>
+            function toggleRegister() {
+                const registerForm = document.getElementById('registerForm');
+                if (registerForm.style.display === 'none') {
+                    registerForm.style.display = 'block';
+                } else {
+                    registerForm.style.display = 'none';
+                }
+            }
+        </script>
+    </body>
+    </html>
+  `);
+});
+
+// Local authentication routes
+app.post('/auth/local', passport.authenticate('local', {
+  successRedirect: '/dashboard',
+  failureRedirect: '/login?error=Invalid email or password'
+}));
+
+// Athlete registration page
+app.get('/register/athlete', (req, res) => {
+  if (req.isAuthenticated()) {
+    return res.redirect('/dashboard');
+  }
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🏃‍♂️ Create Athlete Account</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            .form-container {
+                background: white;
+                padding: 3rem;
+                border-radius: 20px;
+                box-shadow: 0 30px 80px rgba(0,0,0,0.15);
+                width: 100%;
+                max-width: 500px;
+            }
+            .logo {
+                font-size: 3rem;
+                text-align: center;
+                margin-bottom: 1rem;
+            }
+            h1 {
+                color: #333;
+                text-align: center;
+                margin-bottom: 2rem;
+                font-size: 2rem;
+            }
+            .form-group {
+                margin-bottom: 1.5rem;
+            }
+            label {
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 500;
+                color: #333;
+            }
+            input[type="text"], input[type="email"], input[type="password"] {
+                width: 100%;
+                padding: 1rem;
+                border: 2px solid #e1e5e9;
+                border-radius: 10px;
+                font-size: 1rem;
+                transition: border-color 0.3s ease;
+            }
+            input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+            .btn {
+                width: 100%;
+                padding: 1rem;
+                background: #667eea;
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-size: 1.1rem;
+                font-weight: 500;
+                cursor: pointer;
+                transition: background 0.3s ease;
+                margin-bottom: 1rem;
+            }
+            .btn:hover {
+                background: #5a6fd8;
+            }
+            .back-link {
+                text-align: center;
+                margin-top: 1rem;
+            }
+            .back-link a {
+                color: #667eea;
+                text-decoration: none;
+            }
+            .back-link a:hover {
+                text-decoration: underline;
+            }
+            .info-box {
+                background: #f8f9ff;
+                padding: 1.5rem;
+                border-radius: 10px;
+                margin-bottom: 2rem;
+                border-left: 4px solid #667eea;
+            }
+            .info-box h3 {
+                color: #667eea;
+                margin-bottom: 0.5rem;
+            }
+            .info-box p {
+                color: #666;
+                line-height: 1.5;
+                font-size: 0.9rem;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="form-container">
+            <div class="logo">🏃‍♂️</div>
+            <h1>Create Athlete Account</h1>
+
+            <div class="info-box">
+                <h3>Welcome to Your Training Platform!</h3>
+                <p>
+                    You're creating your personal training dashboard. After registration, you'll be able to:
+                    connect your Strava account, sync your training data, manage coach access, and view comprehensive analytics.
+                </p>
+            </div>
+
+            <form action="/auth/register/athlete" method="POST">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="name" placeholder="Enter your full name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Create a secure password" required>
+                </div>
+
+                <button type="submit" class="btn">🚀 Create My Training Dashboard</button>
+            </form>
+
+            <div style="text-align: center; margin: 1.5rem 0;">
+                <p style="color: #666; margin-bottom: 1rem;">Or register with:</p>
+                <a href="/auth/google?mode=athlete" class="btn" style="background: #db4437; margin: 0.5rem;">
+                    📧 Continue with Google
+                </a>
+            </div>
+
+            <div class="back-link">
+                <a href="/">← Back to home</a>
+            </div>
+        </div>
+    </body>
+    </html>
+  `);
+});
+
+// Coach registration page
+app.get('/register/coach', (req, res) => {
+  if (req.isAuthenticated()) {
+    return res.redirect('/dashboard');
+  }
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>👥 Coach Access Request</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            .form-container {
+                background: white;
+                padding: 3rem;
+                border-radius: 20px;
+                box-shadow: 0 30px 80px rgba(0,0,0,0.15);
+                width: 100%;
+                max-width: 500px;
+            }
+            .logo {
+                font-size: 3rem;
+                text-align: center;
+                margin-bottom: 1rem;
+            }
+            h1 {
+                color: #333;
+                text-align: center;
+                margin-bottom: 2rem;
+                font-size: 2rem;
+            }
+            .form-group {
+                margin-bottom: 1.5rem;
+            }
+            label {
+                display: block;
+                margin-bottom: 0.5rem;
+                font-weight: 500;
+                color: #333;
+            }
+            input[type="text"], input[type="email"], input[type="password"], select {
+                width: 100%;
+                padding: 1rem;
+                border: 2px solid #e1e5e9;
+                border-radius: 10px;
+                font-size: 1rem;
+                transition: border-color 0.3s ease;
+            }
+            input[type="text"]:focus, input[type="email"]:focus, input[type="password"]:focus, select:focus {
+                outline: none;
+                border-color: #667eea;
+            }
+            .btn {
+                width: 100%;
+                padding: 1rem;
+                background: #667eea;
+                color: white;
+                border: none;
+                border-radius: 10px;
+                font-size: 1.1rem;
+                font-weight: 500;
+                cursor: pointer;
+                transition: background 0.3s ease;
+                margin-bottom: 1rem;
+            }
+            .btn:hover {
+                background: #5a6fd8;
+            }
+            .back-link {
+                text-align: center;
+                margin-top: 1rem;
+            }
+            .back-link a {
+                color: #667eea;
+                text-decoration: none;
+            }
+            .back-link a:hover {
+                text-decoration: underline;
+            }
+            .info-box {
+                background: #fff9e6;
+                padding: 1.5rem;
+                border-radius: 10px;
+                margin-bottom: 2rem;
+                border-left: 4px solid #ffc107;
+            }
+            .info-box h3 {
+                color: #856404;
+                margin-bottom: 0.5rem;
+            }
+            .info-box p {
+                color: #666;
+                line-height: 1.5;
+                font-size: 0.9rem;
+            }
+        </style>
+    </head>
+    <body>
+        <div class="form-container">
+            <div class="logo">👥</div>
+            <h1>Request Coach Access</h1>
+
+            <div class="info-box">
+                <h3>⚠️ Approval Required</h3>
+                <p>
+                    Coach accounts require approval from the athlete whose data you want to access.
+                    You'll need to know which athlete's training dashboard you want to join.
+                    They'll receive a notification and can approve or deny your request.
+                </p>
+            </div>
+
+            <form action="/auth/register/coach" method="POST">
+                <div class="form-group">
+                    <label for="name">Full Name</label>
+                    <input type="text" id="name" name="name" placeholder="Enter your full name" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" placeholder="Enter your email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" placeholder="Create a secure password" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="athleteEmail">Athlete Email</label>
+                    <input type="email" id="athleteEmail" name="athleteEmail" placeholder="Enter the athlete's email address" required>
+                </div>
+
+                <button type="submit" class="btn">📝 Request Coach Access</button>
+            </form>
+
+            <div style="text-align: center; margin: 1.5rem 0;">
+                <p style="color: #666; margin-bottom: 1rem;">Or register with:</p>
+                <a href="/auth/google?mode=coach" class="btn" style="background: #db4437; margin: 0.5rem;">
+                    📧 Continue with Google
+                </a>
+            </div>
+
+            <div class="back-link">
+                <a href="/">← Back to home</a>
+            </div>
+        </div>
+    </body>
+    </html>
+  `);
+});
+
+// Athlete registration handler
+app.post('/auth/register/athlete', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    // Check if athlete already exists
+    const existingAthlete = await authService.findAthleteByEmail(email);
+    if (existingAthlete) {
+      return res.redirect('/register/athlete?error=An athlete with this email already exists');
+    }
+
+    // Check if user already exists
+    const existingUser = await authService.findUserByEmail(email);
+    if (existingUser) {
+      return res.redirect('/register/athlete?error=A user with this email already exists');
+    }
+
+    // Create athlete record
+    const athlete = await authService.createAthlete({
+      name,
+      email,
+      planType: 'free'
+    });
+
+    // Create user account for the athlete
+    const user = await authService.createUser({
+      name,
+      email,
+      password,
+      provider: 'local',
+      role: 'athlete'
+    });
+
+    // Give the athlete admin access to their own data
+    await authService.AthleteAccess.create({
+      athleteId: athlete.id,
+      userId: user.id,
+      accessLevel: 'admin',
+      isApproved: true,
+      approvedAt: new Date()
+    });
+
+    res.redirect('/login?message=Athlete account created successfully! You can now log in and set up your training dashboard.');
+  } catch (error) {
+    console.error('Athlete registration error:', error);
+    res.redirect('/register/athlete?error=Registration failed. Please try again.');
+  }
+});
+
+// Coach registration handler
+app.post('/auth/register/coach', async (req, res) => {
+  try {
+    const { name, email, password, athleteEmail } = req.body;
+
+    // Check if user already exists
+    const existingUser = await authService.findUserByEmail(email);
+    if (existingUser) {
+      return res.redirect('/register/coach?error=A user with this email already exists');
+    }
+
+    // Find the athlete they want to request access to
+    const athlete = await authService.findAthleteByEmail(athleteEmail);
+    if (!athlete) {
+      return res.redirect('/register/coach?error=No athlete found with that email address');
+    }
+
+    // Create coach user account
+    const user = await authService.createUser({
+      name,
+      email,
+      password,
+      provider: 'local',
+      role: 'coach'
+    });
+
+    // Create access request
+    await authService.requestAthleteAccess(user.id, athlete.id, `Coach registration request for ${athlete.name}'s training data`);
+
+    res.redirect('/login?message=Coach account created! Your access request has been sent to the athlete for approval.');
+  } catch (error) {
+    console.error('Coach registration error:', error);
+    res.redirect('/register/coach?error=Registration failed. Please try again.');
+  }
+});
+
+app.post('/auth/register', async (req, res) => {
+  try {
+    const { name, email, password } = req.body;
+
+    // Check if user already exists
+    const existingUser = await authService.findUserByEmail(email);
+    if (existingUser) {
+      return res.redirect('/login?error=User with this email already exists');
+    }
+
+    // Create new user (pending approval for coaches)
+    await authService.createUser({
+      name,
+      email,
+      password,
+      provider: 'local',
+      role: 'coach',
+      isApproved: false
+    });
+
+    res.redirect('/login?message=Account created! Please wait for approval from the athlete.');
+  } catch (error) {
+    console.error('Registration error:', error);
+    res.redirect('/login?error=Registration failed. Please try again.');
+  }
+});
+
+// Google OAuth routes
+app.get('/auth/google', (req, res, next) => {
+  if (!process.env.GOOGLE_CLIENT_ID || !process.env.GOOGLE_CLIENT_SECRET) {
+    return res.redirect('/login?error=Google OAuth is not configured. Please contact the administrator.');
+  }
+
+  // Store the registration mode in session
+  req.session.oauthMode = req.query.mode || 'general';
+
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+});
+
+app.get('/auth/google/callback', (req, res, next) => {
+  passport.authenticate('google', (err, user, info) => {
+    if (err) {
+      console.error('Google OAuth error:', err);
+      return res.redirect('/login?error=Google authentication failed');
+    }
+
+    if (!user && info && info.message === 'oauth_registration_needed') {
+      // Handle new user registration with Google OAuth
+      return handleGoogleOAuthRegistration(req, res, info.profile);
+    }
+
+    if (!user) {
+      return res.redirect('/login?error=Google authentication failed');
+    }
+
+    // Login successful
+    req.logIn(user, (err) => {
+      if (err) {
+        console.error('Login error:', err);
+        return res.redirect('/login?error=Login failed');
+      }
+      res.redirect('/dashboard');
+    });
+  })(req, res, next);
+});
+
+async function handleGoogleOAuthRegistration(req, res, profile) {
+  try {
+    const oauthMode = req.session.oauthMode || 'general';
+    console.log('Handling Google OAuth registration, mode:', oauthMode);
+
+    // Get email from profile (handle different formats)
+    const email = profile._json?.email || profile.emails?.[0]?.value;
+    if (!email) {
+      return res.redirect('/login?error=No email found in Google profile');
+    }
+
+    if (oauthMode === 'athlete') {
+      // Create athlete and user account
+      const athlete = await authService.createAthlete({
+        name: profile.displayName,
+        email: email,
+        planType: 'free'
+      });
+
+      const user = await authService.createUser({
+        name: profile.displayName,
+        email: email,
+        provider: 'google',
+        providerId: profile.id,
+        avatar: profile.photos?.[0]?.value || profile._json?.picture,
+        role: 'athlete',
+        isApproved: true
+      });
+
+      // Give the athlete admin access to their own data
+      await authService.AthleteAccess.create({
+        athleteId: athlete.id,
+        userId: user.id,
+        accessLevel: 'admin',
+        isApproved: true,
+        approvedAt: new Date()
+      });
+
+      // Log the user in
+      req.logIn(user, (err) => {
+        if (err) {
+          console.error('Login error after registration:', err);
+          return res.redirect('/login?error=Registration successful but login failed');
+        }
+        res.redirect('/dashboard?welcome=true');
+      });
+
+    } else {
+      // For coaches, we need them to specify which athlete they want access to
+      // Redirect to a special page to collect athlete email
+      req.session.pendingGoogleProfile = profile;
+      res.redirect('/register/coach/google');
+    }
+
+  } catch (error) {
+    console.error('Google OAuth registration error:', error);
+    res.redirect('/login?error=Registration failed. Please try again.');
+  }
+}
+
+// Strava OAuth routes
+app.get('/auth/strava', (req, res, next) => {
+  if (!process.env.STRAVA_CLIENT_ID || !process.env.STRAVA_CLIENT_SECRET) {
+    return res.redirect('/login?error=Strava OAuth is not configured. Please contact the administrator.');
+  }
+  passport.authenticate('strava', { scope: ['read'] })(req, res, next);
+});
+
+app.get('/auth/strava/callback',
+  passport.authenticate('strava', { failureRedirect: '/login?error=Strava authentication failed' }),
+  (req, res) => {
+    res.redirect('/dashboard');
+  }
+);
+
+// Logout route
+app.get('/logout', (req, res) => {
+  req.logout((err) => {
+    if (err) {
+      console.error('Logout error:', err);
+    }
+    res.redirect('/login');
+  });
+});
+
+// Platform landing page
 app.get('/', (req, res) => {
+  if (req.isAuthenticated()) {
+    return res.redirect('/dashboard');
+  }
+
+  res.send(`
+    <!DOCTYPE html>
+    <html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>🏃‍♂️ Training Dashboard Platform</title>
+        <style>
+            * { margin: 0; padding: 0; box-sizing: border-box; }
+            body {
+                font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                min-height: 100vh;
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                padding: 20px;
+            }
+            .landing-container {
+                background: white;
+                padding: 3rem;
+                border-radius: 20px;
+                box-shadow: 0 30px 80px rgba(0,0,0,0.15);
+                width: 100%;
+                max-width: 800px;
+                text-align: center;
+            }
+            .logo {
+                font-size: 4rem;
+                margin-bottom: 1rem;
+            }
+            h1 {
+                color: #333;
+                margin-bottom: 1rem;
+                font-size: 2.5rem;
+            }
+            .subtitle {
+                color: #666;
+                margin-bottom: 3rem;
+                font-size: 1.2rem;
+                line-height: 1.6;
+            }
+            .user-types {
+                display: grid;
+                grid-template-columns: 1fr 1fr;
+                gap: 2rem;
+                margin-bottom: 3rem;
+            }
+            .user-type-card {
+                background: #f8f9ff;
+                padding: 2rem;
+                border-radius: 15px;
+                border: 3px solid #e1e5e9;
+                transition: all 0.3s ease;
+                cursor: pointer;
+            }
+            .user-type-card:hover {
+                border-color: #667eea;
+                transform: translateY(-5px);
+                box-shadow: 0 10px 30px rgba(102, 126, 234, 0.2);
+            }
+            .user-type-card.selected {
+                border-color: #667eea;
+                background: #667eea;
+                color: white;
+            }
+            .user-icon {
+                font-size: 3rem;
+                margin-bottom: 1rem;
+            }
+            .user-title {
+                font-size: 1.5rem;
+                font-weight: bold;
+                margin-bottom: 0.5rem;
+            }
+            .user-description {
+                font-size: 0.9rem;
+                line-height: 1.4;
+            }
+            .action-section {
+                display: none;
+                margin-top: 2rem;
+                padding: 2rem;
+                background: #f8f9ff;
+                border-radius: 15px;
+            }
+            .action-section.show {
+                display: block;
+            }
+            .btn {
+                display: inline-block;
+                padding: 1rem 2rem;
+                background: #667eea;
+                color: white;
+                text-decoration: none;
+                border-radius: 10px;
+                font-size: 1.1rem;
+                font-weight: 500;
+                margin: 0.5rem;
+                transition: all 0.3s ease;
+                border: none;
+                cursor: pointer;
+            }
+            .btn:hover {
+                background: #5a6fd8;
+                transform: translateY(-2px);
+            }
+            .btn-secondary {
+                background: #6c757d;
+            }
+            .btn-secondary:hover {
+                background: #545b62;
+            }
+            .features {
+                margin-top: 3rem;
+                text-align: left;
+            }
+            .features h3 {
+                color: #667eea;
+                margin-bottom: 1rem;
+                text-align: center;
+            }
+            .feature-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+                gap: 1rem;
+            }
+            .feature-item {
+                background: #f8f9ff;
+                padding: 1rem;
+                border-radius: 10px;
+                text-align: center;
+            }
+            .feature-emoji {
+                font-size: 2rem;
+                display: block;
+                margin-bottom: 0.5rem;
+            }
+            .feature-text {
+                font-size: 0.9rem;
+                color: #555;
+            }
+            @media (max-width: 768px) {
+                .landing-container {
+                    padding: 2rem;
+                }
+                h1 {
+                    font-size: 2rem;
+                }
+                .user-types {
+                    grid-template-columns: 1fr;
+                    gap: 1rem;
+                }
+                .feature-grid {
+                    grid-template-columns: 1fr;
+                }
+            }
+        </style>
+    </head>
+    <body>
+        <div class="landing-container">
+            <div class="logo">🏃‍♂️</div>
+            <h1>Training Dashboard Platform</h1>
+            <p class="subtitle">
+                Connect athletes with coaches through comprehensive training analytics.<br>
+                Secure data sharing with powerful insights and AI-powered summaries.
+            </p>
+
+            <div class="user-types">
+                <div class="user-type-card" onclick="selectUserType('athlete')">
+                    <div class="user-icon">🏃‍♂️</div>
+                    <div class="user-title">I'm an Athlete</div>
+                    <div class="user-description">
+                        Create your training dashboard and manage who can access your data
+                    </div>
+                </div>
+
+                <div class="user-type-card" onclick="selectUserType('coach')">
+                    <div class="user-icon">👥</div>
+                    <div class="user-title">I'm a Coach</div>
+                    <div class="user-description">
+                        Request access to athlete training data and provide coaching insights
+                    </div>
+                </div>
+            </div>
+
+            <!-- Athlete Action Section -->
+            <div id="athlete-actions" class="action-section">
+                <h3>🏃‍♂️ Set Up Your Training Dashboard</h3>
+                <p style="margin-bottom: 1.5rem;">
+                    Create your personal training analytics platform and connect your Strava data.
+                    You'll be able to invite coaches and control who sees your training information.
+                </p>
+                <a href="/register/athlete" class="btn">🚀 Create Athlete Account</a>
+                <a href="/login" class="btn btn-secondary">Already have an account? Sign In</a>
+            </div>
+
+            <!-- Coach Action Section -->
+            <div id="coach-actions" class="action-section">
+                <h3>👥 Join as a Coach</h3>
+                <p style="margin-bottom: 1.5rem;">
+                    Request access to athlete training data. Athletes must approve your access
+                    before you can view their training analytics and provide coaching insights.
+                </p>
+                <a href="/register/coach" class="btn">📝 Request Coach Access</a>
+                <a href="/login" class="btn btn-secondary">Already have an account? Sign In</a>
+            </div>
+
+            <div class="features">
+                <h3>✨ Platform Features</h3>
+                <div class="feature-grid">
+                    <div class="feature-item">
+                        <span class="feature-emoji">📊</span>
+                        <div class="feature-text">Comprehensive Analytics</div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-emoji">🔄</span>
+                        <div class="feature-text">Auto Strava Sync</div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-emoji">🤖</span>
+                        <div class="feature-text">AI Training Summaries</div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-emoji">👥</span>
+                        <div class="feature-text">Coach Collaboration</div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-emoji">🛡️</span>
+                        <div class="feature-text">Secure Data Control</div>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-emoji">📱</span>
+                        <div class="feature-text">Mobile Friendly</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function selectUserType(type) {
+                // Remove selection from all cards
+                document.querySelectorAll('.user-type-card').forEach(card => {
+                    card.classList.remove('selected');
+                });
+
+                // Hide all action sections
+                document.querySelectorAll('.action-section').forEach(section => {
+                    section.classList.remove('show');
+                });
+
+                // Select current card and show corresponding actions
+                event.target.closest('.user-type-card').classList.add('selected');
+                document.getElementById(type + '-actions').classList.add('show');
+            }
+        </script>
+    </body>
+    </html>
+  `);
+});
+
+// Dashboard route - handles athlete selection for coaches
+app.get('/dashboard', requireAuth, async (req, res) => {
+  console.log('Dashboard route accessed by user:', req.user.id, 'role:', req.user.role);
+  try {
+    if (req.user.role === 'athlete') {
+      // For athletes, find their athlete record and redirect to their dashboard
+      const athleteAccess = await authService.AthleteAccess.findOne({
+        where: {
+          userId: req.user.id,
+          isApproved: true
+        }
+      });
+
+      if (!athleteAccess) {
+        return res.status(500).send('Athlete data not found. Please contact support.');
+      }
+
+      return res.redirect(`/dashboard/${athleteAccess.athleteId}`);
+    }
+
+    // For coaches, show athlete selection interface
+    const accessibleAthletes = await authService.getUserAccessibleAthletes(req.user.id);
+
+    if (accessibleAthletes.length === 1) {
+      // If coach only has access to one athlete, redirect directly
+      return res.redirect(`/dashboard/${accessibleAthletes[0].athleteId}`);
+    }
+
+    // Show athlete selection page
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>👥 Select Athlete - Training Dashboard</title>
+          <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body {
+                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  min-height: 100vh;
+                  padding: 20px;
+              }
+              .header {
+                  background: rgba(255, 255, 255, 0.1);
+                  color: white;
+                  padding: 2rem;
+                  text-align: center;
+                  margin-bottom: 2rem;
+                  border-radius: 15px;
+                  backdrop-filter: blur(10px);
+              }
+              .container {
+                  max-width: 800px;
+                  margin: 0 auto;
+              }
+              .athlete-grid {
+                  display: grid;
+                  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                  gap: 2rem;
+                  margin-bottom: 2rem;
+              }
+              .athlete-card {
+                  background: white;
+                  padding: 2rem;
+                  border-radius: 15px;
+                  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+                  transition: all 0.3s ease;
+                  cursor: pointer;
+                  text-decoration: none;
+                  color: inherit;
+              }
+              .athlete-card:hover {
+                  transform: translateY(-5px);
+                  box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+              }
+              .athlete-icon {
+                  font-size: 3rem;
+                  text-align: center;
+                  margin-bottom: 1rem;
+              }
+              .athlete-name {
+                  font-size: 1.5rem;
+                  font-weight: bold;
+                  color: #333;
+                  margin-bottom: 0.5rem;
+                  text-align: center;
+              }
+              .athlete-email {
+                  color: #666;
+                  text-align: center;
+                  font-size: 0.9rem;
+              }
+              .no-athletes {
+                  background: white;
+                  padding: 3rem;
+                  border-radius: 15px;
+                  text-align: center;
+                  box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+              }
+              .logout-link {
+                  text-align: center;
+                  margin-top: 2rem;
+              }
+              .logout-link a {
+                  color: white;
+                  text-decoration: none;
+                  background: rgba(255, 255, 255, 0.2);
+                  padding: 0.8rem 1.5rem;
+                  border-radius: 10px;
+                  backdrop-filter: blur(10px);
+                  transition: all 0.3s ease;
+              }
+              .logout-link a:hover {
+                  background: rgba(255, 255, 255, 0.3);
+              }
+          </style>
+      </head>
+      <body>
+          <div class="container">
+              <div class="header">
+                  <h1>👥 Select Athlete Dashboard</h1>
+                  <p>Welcome ${req.user.name}! Choose which athlete's training data to view.</p>
+              </div>
+
+              ${accessibleAthletes.length > 0 ? `
+                <div class="athlete-grid">
+                    ${accessibleAthletes.map(access => `
+                        <a href="/dashboard/${access.athleteId}" class="athlete-card">
+                            <div class="athlete-icon">🏃‍♂️</div>
+                            <div class="athlete-name">${access.Athlete.name}</div>
+                            <div class="athlete-email">${access.Athlete.email}</div>
+                        </a>
+                    `).join('')}
+                </div>
+              ` : `
+                <div class="no-athletes">
+                    <h3>🤷‍♂️ No Athlete Access</h3>
+                    <p>You don't currently have access to any athlete dashboards.</p>
+                    <p>Ask an athlete to approve your access through their user management page.</p>
+                </div>
+              `}
+
+              <div class="logout-link">
+                  <a href="/logout">🚪 Logout</a>
+              </div>
+          </div>
+      </body>
+      </html>
+    `);
+
+  } catch (error) {
+    console.error('Dashboard route error:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).send('Failed to load dashboard: ' + error.message);
+  }
+});
+
+// Athlete-specific dashboard
+app.get('/dashboard/:athleteId', requireAuth, requireAthleteAccess, (req, res) => {
+  console.log('Athlete-specific dashboard accessed by user:', req.user.id, 'for athlete:', req.params.athleteId);
+  try {
   res.send(`
     <!DOCTYPE html>
     <html lang="en">
@@ -360,8 +1663,23 @@ app.get('/', (req, res) => {
     </head>
     <body>
         <div class="header">
-            <h1>🏃‍♂️ Strava Training Dashboard</h1>
-            <p>Comprehensive training analytics and activity management</p>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div>
+                    <h1>🏃‍♂️ Strava Training Dashboard</h1>
+                    <p>Comprehensive training analytics and activity management</p>
+                </div>
+                <div style="text-align: right;">
+                    <div style="margin-bottom: 0.5rem;">
+                        <span style="font-size: 0.9rem; color: #666;">Logged in as:</span><br>
+                        <strong>${req.user.name}</strong>
+                        ${req.user.avatar ? `<img src="${req.user.avatar}" alt="Avatar" style="width: 30px; height: 30px; border-radius: 50%; margin-left: 10px; vertical-align: middle;">` : ''}
+                    </div>
+                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                        ${req.user.role === 'athlete' ? `<a href="/admin" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.9rem; width: auto;">👥 Manage Users</a>` : ''}
+                        <a href="/logout" class="btn" style="padding: 0.4rem 0.8rem; font-size: 0.9rem; width: auto;">🚪 Logout</a>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <div class="container">
@@ -991,10 +2309,15 @@ app.get('/', (req, res) => {
     </body>
     </html>
   `);
+  } catch (error) {
+    console.error('Athlete dashboard error:', error);
+    console.error('Error stack:', error.stack);
+    res.status(500).send('Failed to load athlete dashboard: ' + error.message);
+  }
 });
 
 // Sync endpoint
-app.get('/sync', async (req, res) => {
+app.get('/sync', requireAuth, async (req, res) => {
   try {
     const activityCount = parseInt(req.query.count) || 3; // Default to 3 if not provided
     
@@ -1019,7 +2342,7 @@ app.get('/sync', async (req, res) => {
 });
 
 // API Endpoints for dashboard data
-app.get('/api/overview', async (req, res) => {
+app.get('/api/overview', requireAuth, async (req, res) => {
   try {
     const stravaApp = new StravaConnectApp();
     const activities = await stravaApp.sheetsService.getAllActivities();
@@ -1070,7 +2393,7 @@ app.get('/api/overview', async (req, res) => {
   }
 });
 
-app.get('/api/activities', async (req, res) => {
+app.get('/api/activities', requireAuth, async (req, res) => {
   try {
     const stravaApp = new StravaConnectApp();
     const activities = await stravaApp.sheetsService.getAllActivities();
@@ -1085,7 +2408,7 @@ app.get('/api/activities', async (req, res) => {
   }
 });
 
-app.get('/api/weekly', async (req, res) => {
+app.get('/api/weekly', requireAuth, async (req, res) => {
   try {
     const stravaApp = new StravaConnectApp();
     const activities = await stravaApp.sheetsService.getAllActivities();
@@ -1231,7 +2554,7 @@ app.get('/api/weekly', async (req, res) => {
   }
 });
 
-app.get('/api/monthly', async (req, res) => {
+app.get('/api/monthly', requireAuth, async (req, res) => {
   try {
     const stravaApp = new StravaConnectApp();
     const activities = await stravaApp.sheetsService.getAllActivities();
@@ -1265,7 +2588,7 @@ app.get('/api/monthly', async (req, res) => {
   }
 });
 
-app.get('/api/daily', async (req, res) => {
+app.get('/api/daily', requireAuth, async (req, res) => {
   try {
     const { month } = req.query; // Format: YYYY-MM
     const stravaApp = new StravaConnectApp();
@@ -1431,7 +2754,7 @@ function getWeekNumber(date) {
   return Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
 }
 
-app.get('/api/summaries', async (req, res) => {
+app.get('/api/summaries', requireAuth, async (req, res) => {
   try {
     const stravaApp = new StravaConnectApp();
     const summaries = await stravaApp.sheetsService.getExistingWeeklySummaries();
@@ -1470,6 +2793,557 @@ app.get('/api/summaries', async (req, res) => {
   } catch (error) {
     console.error('Summaries API error:', error);
     res.status(500).json({ error: 'Failed to load summaries' });
+  }
+});
+
+// Admin interface for athlete access management
+app.get('/admin', requireAuth, async (req, res) => {
+  if (req.user.role !== 'athlete') {
+    return res.status(403).send('<h1>403 Forbidden</h1><p>Only athletes can access user management.</p>');
+  }
+
+  try {
+    // Find the athlete record for this user
+    const athleteAccess = await authService.AthleteAccess.findOne({
+      where: {
+        userId: req.user.id,
+        isApproved: true
+      }
+    });
+
+    if (!athleteAccess) {
+      return res.status(500).send('<h1>500 Error</h1><p>Athlete data not found. Please contact support.</p>');
+    }
+
+    const athleteId = athleteAccess.athleteId;
+
+    // Get access requests for this athlete
+    const pendingRequests = await authService.getAthleteAccessRequests(athleteId);
+    const approvedUsers = await authService.getAthleteApprovedUsers(athleteId);
+    
+    res.send(`
+      <!DOCTYPE html>
+      <html lang="en">
+      <head>
+          <meta charset="UTF-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1.0">
+          <title>👥 User Management - Strava Training Dashboard</title>
+          <style>
+              * { margin: 0; padding: 0; box-sizing: border-box; }
+              body { 
+                  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
+                  background: #f5f7fa; 
+                  color: #333;
+              }
+              .header {
+                  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+                  color: white;
+                  padding: 2rem;
+                  text-align: center;
+                  margin-bottom: 2rem;
+              }
+              .container {
+                  max-width: 1200px;
+                  margin: 0 auto;
+                  padding: 0 1rem;
+              }
+              .card {
+                  background: white;
+                  border-radius: 8px;
+                  padding: 20px;
+                  margin-bottom: 20px;
+                  box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+              }
+              .user-list {
+                  display: grid;
+                  gap: 1rem;
+              }
+              .user-item {
+                  background: #f8f9fa;
+                  border: 2px solid #e9ecef;
+                  border-radius: 8px;
+                  padding: 1rem;
+                  display: flex;
+                  justify-content: space-between;
+                  align-items: center;
+              }
+              .user-item.pending {
+                  border-color: #ffc107;
+                  background: #fff9e6;
+              }
+              .user-item.approved {
+                  border-color: #28a745;
+                  background: #e6f7e6;
+              }
+              .user-info {
+                  display: flex;
+                  align-items: center;
+                  gap: 1rem;
+              }
+              .user-avatar {
+                  width: 40px;
+                  height: 40px;
+                  border-radius: 50%;
+                  background: #667eea;
+                  display: flex;
+                  align-items: center;
+                  justify-content: center;
+                  color: white;
+                  font-weight: bold;
+              }
+              .user-details h4 {
+                  margin-bottom: 0.25rem;
+              }
+              .user-details span {
+                  font-size: 0.9rem;
+                  color: #666;
+              }
+              .user-actions {
+                  display: flex;
+                  gap: 0.5rem;
+              }
+              .btn {
+                  padding: 0.5rem 1rem;
+                  border: none;
+                  border-radius: 4px;
+                  cursor: pointer;
+                  font-size: 0.9rem;
+                  text-decoration: none;
+                  display: inline-block;
+                  transition: all 0.3s ease;
+              }
+              .btn-approve {
+                  background: #28a745;
+                  color: white;
+              }
+              .btn-approve:hover {
+                  background: #218838;
+              }
+              .btn-delete {
+                  background: #dc3545;
+                  color: white;
+              }
+              .btn-delete:hover {
+                  background: #c82333;
+              }
+              .btn-back {
+                  background: #667eea;
+                  color: white;
+                  margin-bottom: 1rem;
+              }
+              .btn-back:hover {
+                  background: #5a6fd8;
+              }
+              .status-badge {
+                  padding: 0.25rem 0.5rem;
+                  border-radius: 12px;
+                  font-size: 0.8rem;
+                  font-weight: bold;
+              }
+              .status-pending {
+                  background: #ffc107;
+                  color: #856404;
+              }
+              .status-approved {
+                  background: #28a745;
+                  color: white;
+              }
+              .provider-badge {
+                  padding: 0.2rem 0.4rem;
+                  border-radius: 8px;
+                  font-size: 0.7rem;
+                  font-weight: bold;
+                  margin-left: 0.5rem;
+              }
+              .provider-local {
+                  background: #6c757d;
+                  color: white;
+              }
+              .provider-google {
+                  background: #4285f4;
+                  color: white;
+              }
+              .provider-strava {
+                  background: #fc4c02;
+                  color: white;
+              }
+              .empty-state {
+                  text-align: center;
+                  padding: 2rem;
+                  color: #666;
+              }
+          </style>
+      </head>
+      <body>
+          <div class="header">
+              <h1>👥 User Management</h1>
+              <p>Manage coach access to your training data</p>
+          </div>
+          
+          <div class="container">
+              <a href="/dashboard" class="btn btn-back">← Back to Dashboard</a>
+              
+              ${pendingRequests.length > 0 ? `
+              <div class="card">
+                  <h2>⏳ Pending Access Requests (${pendingRequests.length})</h2>
+                  <p style="margin-bottom: 1rem; color: #666;">These coaches are requesting access to your training data.</p>
+                  <div class="user-list">
+                      ${pendingRequests.map(request => `
+                          <div class="user-item pending">
+                              <div class="user-info">
+                                  <div class="user-avatar">
+                                      ${request.User.avatar ? `<img src="${request.User.avatar}" alt="${request.User.name}" style="width: 100%; height: 100%; border-radius: 50%;">` : request.User.name.charAt(0)}
+                                  </div>
+                                  <div class="user-details">
+                                      <h4>${request.User.name}</h4>
+                                      <span>${request.User.email}</span>
+                                      <span class="provider-badge provider-${request.User.provider}">${request.User.provider.toUpperCase()}</span>
+                                      <br><small>Requested: ${new Date(request.createdAt).toLocaleDateString()}</small>
+                                      ${request.requestMessage ? `<br><small style="color: #666;">Message: ${request.requestMessage}</small>` : ''}
+                                  </div>
+                              </div>
+                              <div class="user-actions">
+                                  <button class="btn btn-approve" onclick="approveAccess(${request.userId}, ${athleteId})">✅ Approve</button>
+                                  <button class="btn btn-delete" onclick="rejectAccess(${request.userId}, ${athleteId})">❌ Reject</button>
+                              </div>
+                          </div>
+                      `).join('')}
+                  </div>
+              </div>
+              ` : `
+              <div class="card">
+                  <div class="empty-state">
+                      <h3>✅ No Pending Requests</h3>
+                      <p>All access requests have been processed!</p>
+                  </div>
+              </div>
+              `}
+
+              <div class="card">
+                  <h2>➕ Add Coach by Email</h2>
+                  <p style="margin-bottom: 1rem; color: #666;">Grant access to a coach by entering their email address.</p>
+                  <form id="addCoachForm" style="display: flex; gap: 1rem; align-items: center; flex-wrap: wrap;">
+                      <input
+                          type="email"
+                          id="coachEmail"
+                          placeholder="Enter coach's email address"
+                          required
+                          style="flex: 1; min-width: 250px; padding: 0.75rem; border: 2px solid #ddd; border-radius: 8px; font-size: 1rem;"
+                      >
+                      <button
+                          type="submit"
+                          class="btn btn-approve"
+                          style="white-space: nowrap;"
+                      >
+                          ➕ Add Coach
+                      </button>
+                  </form>
+                  <div id="addCoachMessage" style="margin-top: 1rem; display: none;"></div>
+              </div>
+
+              <div class="card">
+                  <h2>👥 Approved Coaches (${approvedUsers.length})</h2>
+                  <div class="user-list">
+                      ${approvedUsers.map(access => `
+                          <div class="user-item approved">
+                              <div class="user-info">
+                                  <div class="user-avatar">
+                                      ${access.User.avatar ? `<img src="${access.User.avatar}" alt="${access.User.name}" style="width: 100%; height: 100%; border-radius: 50%;">` : access.User.name.charAt(0)}
+                                  </div>
+                                  <div class="user-details">
+                                      <h4>${access.User.name} 👥</h4>
+                                      <span>${access.User.email}</span>
+                                      <span class="provider-badge provider-${access.User.provider}">${access.User.provider.toUpperCase()}</span>
+                                      <span class="status-badge status-approved">
+                                          ${access.accessLevel.charAt(0).toUpperCase() + access.accessLevel.slice(1)} Access
+                                      </span>
+                                      <br><small>Approved: ${new Date(access.approvedAt).toLocaleDateString()}</small>
+                                  </div>
+                              </div>
+                              <div class="user-actions">
+                                  <button class="btn btn-delete" onclick="revokeAccess(${access.userId}, ${athleteId})">🗑️ Revoke Access</button>
+                              </div>
+                          </div>
+                      `).join('')}
+                  </div>
+              </div>
+          </div>
+          
+          <script>
+              async function approveAccess(userId, athleteId) {
+                  if (confirm('Approve this coach to access your training data?')) {
+                      try {
+                          const response = await fetch(\`/admin/approve-access/\${userId}/\${athleteId}\`, { method: 'POST' });
+                          if (response.ok) {
+                              location.reload();
+                          } else {
+                              alert('Failed to approve access');
+                          }
+                      } catch (error) {
+                          alert('Error approving access');
+                      }
+                  }
+              }
+
+              async function rejectAccess(userId, athleteId) {
+                  if (confirm('Reject this access request? This action cannot be undone.')) {
+                      try {
+                          const response = await fetch(\`/admin/reject-access/\${userId}/\${athleteId}\`, { method: 'DELETE' });
+                          if (response.ok) {
+                              location.reload();
+                          } else {
+                              alert('Failed to reject access');
+                          }
+                      } catch (error) {
+                          alert('Error rejecting access');
+                      }
+                  }
+              }
+
+              async function revokeAccess(userId, athleteId) {
+                  if (confirm('Revoke this coach\\'s access to your training data? This action cannot be undone.')) {
+                      try {
+                          const response = await fetch(\`/admin/revoke-access/\${userId}/\${athleteId}\`, { method: 'DELETE' });
+                          if (response.ok) {
+                              location.reload();
+                          } else {
+                              alert('Failed to revoke access');
+                          }
+                      } catch (error) {
+                          alert('Error revoking access');
+                      }
+                  }
+              }
+
+              // Add coach by email functionality
+              document.getElementById('addCoachForm').addEventListener('submit', async (e) => {
+                  e.preventDefault();
+
+                  const coachEmail = document.getElementById('coachEmail').value.trim();
+                  const athleteId = ${athleteId};
+                  const messageDiv = document.getElementById('addCoachMessage');
+                  const submitBtn = e.target.querySelector('button[type="submit"]');
+
+                  if (!coachEmail) {
+                      showMessage('Please enter a coach email address.', 'error');
+                      return;
+                  }
+
+                  // Disable button and show loading
+                  submitBtn.disabled = true;
+                  submitBtn.textContent = '⏳ Adding...';
+
+                  try {
+                      const response = await fetch('/admin/add-coach', {
+                          method: 'POST',
+                          headers: {
+                              'Content-Type': 'application/json',
+                          },
+                          body: JSON.stringify({
+                              coachEmail: coachEmail,
+                              athleteId: athleteId
+                          })
+                      });
+
+                      const result = await response.json();
+
+                      if (response.ok) {
+                          showMessage(\`✅ \${result.message}\`, 'success');
+                          document.getElementById('coachEmail').value = '';
+                          // Reload page after 2 seconds to show updated coach list
+                          setTimeout(() => location.reload(), 2000);
+                      } else {
+                          showMessage(\`❌ \${result.error || 'Failed to add coach'}\`, 'error');
+                      }
+                  } catch (error) {
+                      showMessage('❌ Network error. Please try again.', 'error');
+                  } finally {
+                      // Re-enable button
+                      submitBtn.disabled = false;
+                      submitBtn.textContent = '➕ Add Coach';
+                  }
+              });
+
+              function showMessage(text, type) {
+                  const messageDiv = document.getElementById('addCoachMessage');
+                  messageDiv.textContent = text;
+                  messageDiv.style.display = 'block';
+                  messageDiv.style.color = type === 'success' ? '#28a745' : '#dc3545';
+                  messageDiv.style.fontWeight = 'bold';
+
+                  // Auto-hide success messages after 5 seconds
+                  if (type === 'success') {
+                      setTimeout(() => {
+                          messageDiv.style.display = 'none';
+                      }, 5000);
+                  }
+              }
+          </script>
+      </body>
+      </html>
+    `);
+  } catch (error) {
+    console.error('Admin page error:', error);
+    res.status(500).send('<h1>500 Error</h1><p>Failed to load user management page.</p>');
+  }
+});
+
+// Admin API endpoints for athlete access management
+app.post('/admin/approve-access/:userId/:athleteId', requireAuth, async (req, res) => {
+  if (req.user.role !== 'athlete') {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const userId = parseInt(req.params.userId);
+    const athleteId = parseInt(req.params.athleteId);
+
+    // Verify the athlete owns this data
+    const athleteAccess = await authService.AthleteAccess.findOne({
+      where: {
+        userId: req.user.id,
+        athleteId: athleteId,
+        isApproved: true
+      }
+    });
+
+    if (!athleteAccess) {
+      return res.status(403).json({ error: 'You do not have access to manage this athlete data' });
+    }
+
+    await authService.approveAthleteAccess(userId, athleteId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Approve access error:', error);
+    res.status(500).json({ error: 'Failed to approve access' });
+  }
+});
+
+// Add coach by email endpoint
+app.post('/admin/add-coach', requireAuth, async (req, res) => {
+  if (req.user.role !== 'athlete') {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const { coachEmail, athleteId } = req.body;
+
+    if (!coachEmail || !athleteId) {
+      return res.status(400).json({ error: 'Coach email and athlete ID are required' });
+    }
+
+    // Verify the athlete owns this data
+    const athleteAccess = await authService.AthleteAccess.findOne({
+      where: {
+        userId: req.user.id,
+        athleteId: parseInt(athleteId),
+        accessLevel: 'admin',
+        isApproved: true
+      }
+    });
+
+    if (!athleteAccess) {
+      return res.status(403).json({ error: 'You do not have admin access to this athlete data' });
+    }
+
+    // Find the coach by email
+    const coach = await authService.findUserByEmail(coachEmail.trim().toLowerCase());
+
+    if (!coach) {
+      return res.status(404).json({ error: 'Coach not found. They may need to register first.' });
+    }
+
+    if (coach.role !== 'coach') {
+      return res.status(400).json({ error: 'This user is not registered as a coach.' });
+    }
+
+    // Check if coach already has access
+    const existingAccess = await authService.getUserAthleteAccess(coach.id, parseInt(athleteId));
+    if (existingAccess) {
+      return res.status(400).json({ error: 'This coach already has access to your data.' });
+    }
+
+    // Grant access to the coach
+    await authService.requestAthleteAccess(coach.id, parseInt(athleteId), `Added by athlete via email: ${coachEmail}`);
+    await authService.approveAthleteAccess(coach.id, parseInt(athleteId));
+
+    res.json({
+      success: true,
+      message: `Coach ${coach.name} (${coach.email}) has been granted access to your data.`,
+      coach: {
+        name: coach.name,
+        email: coach.email,
+        avatar: coach.avatar
+      }
+    });
+  } catch (error) {
+    console.error('Add coach error:', error);
+    res.status(500).json({ error: 'Failed to add coach. Please try again.' });
+  }
+});
+
+app.delete('/admin/reject-access/:userId/:athleteId', requireAuth, async (req, res) => {
+  if (req.user.role !== 'athlete') {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const userId = parseInt(req.params.userId);
+    const athleteId = parseInt(req.params.athleteId);
+
+    // Verify the athlete owns this data
+    const athleteAccess = await authService.AthleteAccess.findOne({
+      where: {
+        userId: req.user.id,
+        athleteId: athleteId,
+        isApproved: true
+      }
+    });
+
+    if (!athleteAccess) {
+      return res.status(403).json({ error: 'You do not have access to manage this athlete data' });
+    }
+
+    await authService.revokeAthleteAccess(userId, athleteId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Reject access error:', error);
+    res.status(500).json({ error: 'Failed to reject access' });
+  }
+});
+
+app.delete('/admin/revoke-access/:userId/:athleteId', requireAuth, async (req, res) => {
+  if (req.user.role !== 'athlete') {
+    return res.status(403).json({ error: 'Unauthorized' });
+  }
+
+  try {
+    const userId = parseInt(req.params.userId);
+    const athleteId = parseInt(req.params.athleteId);
+
+    // Verify the athlete owns this data
+    const athleteAccess = await authService.AthleteAccess.findOne({
+      where: {
+        userId: req.user.id,
+        athleteId: athleteId,
+        isApproved: true
+      }
+    });
+
+    if (!athleteAccess) {
+      return res.status(403).json({ error: 'You do not have access to manage this athlete data' });
+    }
+
+    // Prevent revoking the athlete's own access
+    if (userId === req.user.id) {
+      return res.status(400).json({ error: 'Cannot revoke your own access' });
+    }
+
+    await authService.revokeAthleteAccess(userId, athleteId);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Revoke access error:', error);
+    res.status(500).json({ error: 'Failed to revoke access' });
   }
 });
 
